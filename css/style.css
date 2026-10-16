@@ -1,0 +1,474 @@
+/* ==========================================================================
+ * Chuyu's Rainbow Kitchen (楚楚的彩虹料理屋) — Storybook Pastel Kitchen UI
+ * ========================================================================== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  background: linear-gradient(160deg, #ffe3ef 0%, #fff4d9 52%, #e3f6ff 100%);
+  color: #4a253b;
+}
+
+.kitchen-app {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 6px 10px;
+  gap: 6px;
+}
+
+/* 1. Top Header Bar */
+.top-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.92);
+  border: 3px solid #ffb3cf;
+  border-radius: 18px;
+  padding: 5px 12px;
+  box-shadow: 0 4px 12px rgba(217, 95, 140, 0.14);
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.brand-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 19px;
+  font-weight: 800;
+  color: #d6296a;
+  white-space: nowrap;
+}
+
+.customer-strip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow-x: auto;
+  padding: 2px 4px;
+}
+
+.critter-chip {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: #fff5f8;
+  border: 2px solid #ffd1e1;
+  border-radius: 999px;
+  padding: 2px 6px 2px 3px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b3050;
+  cursor: pointer;
+  transition: transform 0.14s, background 0.14s;
+  white-space: nowrap;
+}
+
+.critter-chip img {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.critter-chip span {
+  display: none;
+}
+
+.critter-chip.active {
+  background: linear-gradient(135deg, #ff5c8d, #ff8552);
+  border-color: #c92458;
+  color: #ffffff;
+  transform: scale(1.06);
+}
+
+.critter-chip.active span {
+  display: inline;
+  padding-right: 4px;
+}
+
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.pill-btn {
+  background: #fff0f6;
+  border: 2px solid #ff9ec2;
+  border-radius: 999px;
+  padding: 5px 11px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #8c2652;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.12s;
+}
+
+.pill-btn:active {
+  transform: scale(0.95);
+}
+
+.pill-btn.gold {
+  background: linear-gradient(135deg, #ffe266, #ffb700);
+  border-color: #d48800;
+  color: #593300;
+}
+
+.star-badge {
+  background: #fff8d6;
+  border: 2px solid #ffc400;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #9e6300;
+}
+
+/* 2. Step Guide & 1-Tap Action Strip */
+.guide-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(90deg, #fff8fb 0%, #fffdf2 100%);
+  border: 2.5px solid #ffc2d9;
+  border-radius: 16px;
+  padding: 5px 12px;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.step-prompt {
+  font-size: 15px;
+  font-weight: 800;
+  color: #6b2948;
+}
+
+.primary-action-btn {
+  background: linear-gradient(135deg, #ff477e 0%, #ff7b3b 100%);
+  border: 2.5px solid #b81d4e;
+  border-radius: 999px;
+  padding: 7px 18px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(255, 71, 126, 0.32);
+  white-space: nowrap;
+  animation: gentlePulse 1.8s infinite ease-in-out;
+}
+
+@keyframes gentlePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+
+/* 3. Center Interactive Kitchen Canvas */
+.canvas-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 220px;
+  background: #fff9f5;
+  border: 3.5px solid #ff9ec2;
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: inset 0 0 18px rgba(255, 175, 205, 0.25), 0 6px 16px rgba(160, 70, 110, 0.12);
+}
+
+#kitchenCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+.prep-tray-overlay {
+  position: absolute;
+  right: 12px;
+  top: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 2px solid #ffb8d0;
+  border-radius: 14px;
+  padding: 5px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  max-width: 46%;
+  font-size: 12px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.tray-pill {
+  background: #fff0f5;
+  border: 1.5px solid #ff9ec2;
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+
+/* 4. Ingredient Drawer & Decoration Toolbar */
+.bottom-shelf-panel {
+  background: rgba(255, 255, 255, 0.94);
+  border: 2.5px solid #ffb3cf;
+  border-radius: 18px;
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.cat-tabs, .decor-modes {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.cat-tab, .decor-mode-btn {
+  background: #fff2f7;
+  border: 2px solid #ffc2d9;
+  border-radius: 999px;
+  padding: 4px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #7a2e52;
+  cursor: pointer;
+}
+
+.cat-tab.active, .decor-mode-btn.active {
+  background: #ff4d88;
+  border-color: #b81d52;
+  color: #ffffff;
+}
+
+.ingredient-shelf, .decor-options {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.ing-card {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(180deg, #ffffff 0%, #fff5f8 100%);
+  border: 2.5px solid #ffb8d1;
+  border-radius: 14px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.12s;
+}
+
+.ing-card:hover, .ing-card:active {
+  transform: translateY(-2px) scale(1.04);
+  border-color: #ff477e;
+}
+
+.ing-emoji {
+  font-size: 24px;
+}
+
+.ing-label {
+  font-size: 14px;
+  font-weight: 800;
+  color: #59253e;
+}
+
+.swatch-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff7fa;
+  border: 2px solid #ffc2d9;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #59253e;
+  cursor: pointer;
+}
+
+.swatch-btn.active {
+  background: #ffe0ec;
+  border-color: #ff2b6e;
+  transform: scale(1.05);
+}
+
+.swatch-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0, 0, 0, 0.25);
+  display: inline-block;
+}
+
+/* 5. Bottom 5-Station Navigation Dock */
+.station-dock {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.station-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 2.5px solid #ffb8d1;
+  border-radius: 16px;
+  padding: 8px 6px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #6b2948;
+  cursor: pointer;
+  transition: transform 0.12s, background 0.12s;
+}
+
+.station-btn.active {
+  background: linear-gradient(135deg, #ff477e 0%, #ff853b 100%);
+  border-color: #b8194a;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(255, 71, 126, 0.35);
+  transform: translateY(-2px);
+}
+
+/* 6. Photo Sticker Album Modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(55, 20, 40, 0.58);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+
+.modal-backdrop.hidden {
+  display: none;
+}
+
+.modal-card {
+  background: #fff9fb;
+  border: 4px solid #ff85b3;
+  border-radius: 26px;
+  width: min(860px, 95vw);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px;
+  gap: 12px;
+  box-shadow: 0 16px 40px rgba(60, 15, 40, 0.35);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 20px;
+  font-weight: 800;
+  color: #c9245b;
+}
+
+.album-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.album-card {
+  background: #ffffff;
+  border: 2.5px solid #ffc2d9;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+}
+
+.album-photo {
+  width: 100%;
+  height: 135px;
+  object-fit: cover;
+  border-bottom: 2px solid #ffe3ed;
+}
+
+.album-meta {
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.album-dish-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #59203b;
+}
+
+.album-rxn {
+  color: #d6296a;
+  font-weight: 700;
+  margin: 3px 0;
+}
+
+.album-customer {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #7a4b62;
+}
+
+.album-customer img {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}
+
+.album-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 36px 16px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #8c4668;
+}
+
+/* Responsive adjustments for compact mobile landscape & portrait */
+@media (max-height: 540px) {
+  .kitchen-app { padding: 3px 6px; gap: 3px; }
+  .top-header { padding: 3px 8px; }
+  .brand-title { font-size: 14px; }
+  .guide-strip { padding: 3px 8px; }
+  .step-prompt { font-size: 12px; }
+  .primary-action-btn { padding: 4px 12px; font-size: 12px; }
+  .bottom-shelf-panel { padding: 3px 6px; gap: 3px; }
+  .ing-card { padding: 3px 8px; }
+  .ing-emoji { font-size: 18px; }
+  .ing-label { font-size: 12px; }
+  .station-btn { padding: 4px 4px; font-size: 12px; }
+}
+
+@media (max-width: 720px) {
+  .brand-title span.sub { display: none; }
+  .station-btn { font-size: 12px; padding: 6px 2px; }
+  .step-prompt { font-size: 13px; }
+}
