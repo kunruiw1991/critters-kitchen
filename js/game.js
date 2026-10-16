@@ -1,10 +1,10 @@
 'use strict';
 /* ==========================================================================
- * Chuyu's Rainbow Kitchen (楚楚的彩虹料理屋) — Core Interactive Engine
- * 5 Stations: 1.Chop/Prep -> 2.Mix/Blend -> 3.Pan/Oven -> 4.Pipe/Decorate -> 5.Feed/React
+ * Chuyu's Rainbow Kitchen — 100% Zero-Text Visual & Spoken Engine for 5yo
+ * 5 Stations: 1.🔪 -> 2.🥣 -> 3.🍳 -> 4.🧁 -> 5.🍽️
  * ========================================================================== */
 const KitchenGame = (() => {
-  const STORAGE_KEY = 'chuyu_rainbow_kitchen_v1';
+  const STORAGE_KEY = 'chuyu_rainbow_kitchen_v2';
   const PI2 = Math.PI * 2;
   let canvas, ctx;
   let W = 960, H = 560, dpr = 1;
@@ -28,7 +28,6 @@ const KitchenGame = (() => {
   let mixProgress = 0;  // 0..1
   let mixAngle = 0;
   let mixColor = '#fff6d6';
-  let isBlending = false;
 
   // Station 3: Skillet Pan & Oven State
   let cookMode = 'pan'; // 'pan' | 'oven'
@@ -36,7 +35,6 @@ const KitchenGame = (() => {
   let panItems = [];    // Items currently on skillet/oven
   let cookProgress = 0; // 0..1.35 (0.65..0.98 = golden, >1.05 = burnt)
   let flipAnim = 0;     // 0..1 parabolic toss animation
-  let ovenRunning = false;
   let sizzleTimer = 0;
 
   // Station 4 & 5: Plated Dish State
@@ -54,7 +52,7 @@ const KitchenGame = (() => {
     chewing: 0,
     reaction: null,
     reactionTimer: 0,
-    reactionTitle: '',
+    reactionBadge: '',
     lookX: 0,
     lookY: 0,
   };
@@ -150,7 +148,6 @@ const KitchenGame = (() => {
         knifeAnim: 0,
       };
       spawnParticles(W * 0.46, H * 0.62, meta.color, 10, 'circle');
-      // If it doesn't need chopping (like milk, honey, boba, popcandy), auto-ready after 1 tap
       if (!meta.choppable && !meta.crackable) {
         chopBoardItem();
       }
@@ -167,7 +164,6 @@ const KitchenGame = (() => {
 
   function chopBoardItem() {
     if (!boardItem) {
-      // Auto-place first order ingredient or strawberry if board is empty
       const defaultId = mode === 'wish' ? currentOrder().wantIds[0] : 'strawberry';
       selectIngredient(defaultId);
       if (!boardItem) return;
@@ -194,7 +190,6 @@ const KitchenGame = (() => {
         cracked: boardItem.cracked,
         cooked: 0,
       });
-      // Also mirror into dish/mixer/pan buffers so 5-year-old never loses an item when switching stations!
       syncIngredientToPipeline(boardItem.id, boardItem.sliced, boardItem.cracked);
       const finishedId = boardItem.id;
       setTimeout(() => {
@@ -211,12 +206,10 @@ const KitchenGame = (() => {
 
   function syncIngredientToPipeline(id, sliced, cracked) {
     const meta = KitchenData.getIngredient(id);
-    // Add to mixer if liquid/batter/smoothie ingredient
     if (meta.liquid || id === 'dough' || id === 'boba' || id === 'icecream' || meta.cat === 'fruit' || id === 'popcandy') {
       mixItems.push({ id, sliced, cracked });
       recomputeMixColor();
     }
-    // Add to cooker if grillable/bakeable
     if (meta.grillable || meta.bakeable || id === 'egg' || id === 'dough' || id === 'pizzabase') {
       panItems.push({
         id,
@@ -226,7 +219,6 @@ const KitchenGame = (() => {
         y: (Math.random() - 0.5) * 45,
       });
     }
-    // Also place on dish so even if she jumps straight to Station 4 or 5, the food is on the plate!
     addIngredientToDish(id, sliced, meta.grillable ? 0.72 : 0, cracked);
   }
 
@@ -300,7 +292,6 @@ const KitchenGame = (() => {
 
   function stirMixer(amount) {
     if (mixItems.length === 0) {
-      // Auto-populate from prepTray or default recipe
       if (prepTray.length > 0) {
         prepTray.forEach(p => mixItems.push({ id: p.id, sliced: p.sliced, cracked: p.cracked }));
       } else {
@@ -350,7 +341,6 @@ const KitchenGame = (() => {
       }
     }
     if (cookMode === 'oven') {
-      ovenRunning = true;
       cookProgress = Math.min(0.85, cookProgress + 0.45);
       dish.bakedCake = true;
       KitchenAudio.ovenDing();
@@ -405,7 +395,6 @@ const KitchenGame = (() => {
   function addToppingAt(localX, localY) {
     ensureDishHasBase();
     const topMeta = KitchenData.TOPPINGS[toppingIdx] || KitchenData.TOPPINGS[0];
-    // Check if tapping an existing lit candle to blow it out!
     for (let tp of dish.toppings) {
       if (tp.id === 'candle' && !tp.blownOut && Math.hypot(tp.x - localX, tp.y - localY) < 28) {
         tp.blownOut = true;
@@ -427,34 +416,34 @@ const KitchenGame = (() => {
   }
 
   /* ==========================================================================
-   * Station 5: Bite-by-Bite Feeding & 8 Reaction Evaluator
+   * Station 5: Bite-by-Bite Feeding & 8 Visual Reaction Evaluator (Zero Text)
    * ========================================================================== */
   function evaluateDishReaction() {
     const ids = dish.items.map(i => i.id);
     const anyBurnt = cookProgress > 1.08 || dish.items.some(i => (i.cooked || 0) > 1.08);
     if (anyBurnt) {
-      return { kind: 'burnt', title: '💨 哎呀烤糊啦！咳咳咳~ 黑炭料理！', stars: 2 };
+      return { kind: 'burnt', badge: '💨 🖤 😵', stars: 2 };
     }
     if (ids.includes('chili')) {
-      return { kind: 'fire', title: '🔥 哇啊好辣好辣！嘴巴喷火啦！', stars: 3 };
+      return { kind: 'fire', badge: '🔥 🌶️ 🥵', stars: 3 };
     }
     if (ids.includes('lemon') && !ids.includes('honey') && !ids.includes('chocolate')) {
-      return { kind: 'sour', title: '🍋 嘶——好酸呀！五官皱成一团啦！', stars: 3 };
+      return { kind: 'sour', badge: '🍋 😖 💦', stars: 3 };
     }
     const fruitCount = dish.items.filter(i => KitchenData.getIngredient(i.id).cat === 'fruit').length;
     if (dish.toppings.some(tp => tp.id === 'sprinkles') || fruitCount >= 3) {
-      return { kind: 'rainbow', title: '🌈 彩虹多巴胺大餐！全身闪耀七彩光芒！', stars: 3 };
+      return { kind: 'rainbow', badge: '🌈 🦄 ✨', stars: 3 };
     }
     if (ids.includes('popcandy')) {
-      return { kind: 'float', title: '🎈 哇！云朵跳跳糖让小动物飘起来啦！', stars: 3 };
+      return { kind: 'float', badge: '🎈 ☁️ ✨', stars: 3 };
     }
     if (ids.includes('icecream') && !dish.bakedCake) {
-      return { kind: 'ice', title: '🥶 冰冰凉透心凉！脑门结出小冰花啦！', stars: 3 };
+      return { kind: 'ice', badge: '🥶 ❄️ 🧊', stars: 3 };
     }
     if ((ids.includes('milk') && ids.includes('honey')) || (currentCritter().id === 'catnap' && (ids.includes('milk') || ids.includes('honey')))) {
-      return { kind: 'sleepy', title: '😴 暖呼呼好香甜~ 吹着鼻涕泡秒睡着啦！', stars: 3 };
+      return { kind: 'sleepy', badge: '😴 🌙 💤', stars: 3 };
     }
-    return { kind: 'love', title: '💖 太美味啦！小动物眼睛冒星星跳起舞来！', stars: 3 };
+    return { kind: 'love', badge: '😍 💖 ⭐', stars: 3 };
   }
 
   function feedOneBite() {
@@ -471,7 +460,7 @@ const KitchenGame = (() => {
     const rxn = evaluateDishReaction();
     critterAnim.reaction = rxn.kind;
     critterAnim.reactionTimer = 4.5;
-    critterAnim.reactionTitle = rxn.title;
+    critterAnim.reactionBadge = rxn.badge;
     KitchenAudio.reaction(rxn.kind);
 
     if (dish.bitesTaken === 1) {
@@ -496,11 +485,8 @@ const KitchenGame = (() => {
 
       const c = currentCritter();
       album.unshift({
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        critterName: c.name,
         critterIcon: c.icon,
-        title: mode === 'wish' ? currentOrder().zh : '楚楚创意私房菜',
-        reactionTitle: rxn.title,
+        reactionBadge: rxn.badge,
         stars: rxn.stars,
         dataUrl: snapCv.toDataURL('image/jpeg', 0.82),
       });
@@ -510,7 +496,7 @@ const KitchenGame = (() => {
   }
 
   /* ==========================================================================
-   * Station Switching & UI Synchronization
+   * Station Switching & Visual Pictogram Guide Bar (100% Zero Text)
    * ========================================================================== */
   function setStation(num) {
     station = num;
@@ -544,11 +530,10 @@ const KitchenGame = (() => {
     panItems = [];
     cookProgress = 0;
     flipAnim = 0;
-    ovenRunning = false;
     dish = createFreshDish();
     critterAnim.reaction = null;
     critterAnim.reactionTimer = 0;
-    critterAnim.reactionTitle = '';
+    critterAnim.reactionBadge = '';
     if (nextOrder) {
       orderIdx = (orderIdx + 1) % KitchenData.WISH_ORDERS.length;
       if (mode === 'wish') {
@@ -572,51 +557,39 @@ const KitchenGame = (() => {
     if (station === 1) {
       if (boardItem) {
         const m = KitchenData.getIngredient(boardItem.id);
-        el.textContent = m.crackable
-          ? `🥚 点击鸡蛋或【敲碎鸡蛋】按钮 (${boardItem.chops}/${boardItem.maxChops})！`
-          : `🔪 手指划过${m.zh}切菜，或点右侧按钮 (${boardItem.chops}/${boardItem.maxChops})！`;
-        btn.textContent = m.crackable ? '🥚 咔哒敲碎鸡蛋！' : '🔪 咔嚓切一刀！';
+        const dots = '🟢'.repeat(boardItem.chops) + '⚪'.repeat(Math.max(0, boardItem.maxChops - boardItem.chops));
+        el.textContent = `${m.emoji} ➡️ ${m.crackable ? '🥚💥' : '🔪'}  ${dots}`;
+        btn.textContent = m.crackable ? '🥚💥' : '🔪✨';
       } else if (prepTray.length > 0) {
-        el.textContent = `✅ 已切好 ${prepTray.length} 样食材！可以继续切菜，或点【下一步：去搅拌/下锅】`;
-        btn.textContent = '➡️ 下一步：去搅拌 / 煎锅';
+        const icons = prepTray.slice(-5).map(p => KitchenData.getIngredient(p.id).emoji).join(' ');
+        el.textContent = `✅ ${icons} ➡️ 🥣 / 🍳`;
+        btn.textContent = '➡️ 🥣';
       } else {
-        el.textContent = '👇 从下方点选喜欢的食材放到菜板上切一切吧！';
-        btn.textContent = '🔪 拿食材切一刀！';
+        el.textContent = '👆 🍓 🍌 🥚 ➡️ 🔪';
+        btn.textContent = '🔪✨';
       }
     } else if (station === 2) {
-      const pct = Math.round(mixProgress * 100);
-      el.textContent = mixMode === 'blender'
-        ? `🧋 旋风榨汁杯 (${pct}%)：手指在杯上转圈或点按钮打成果昔奶茶！`
-        : `🥣 搅拌碗 (${pct}%)：手指在碗里画圈搅拌成顺滑面糊！`;
-      btn.textContent = pct >= 100 ? '➡️ 搅拌完成！去煎锅/烤箱' : (mixMode === 'blender' ? '⚡ 按一下旋风榨汁！' : '🌀 顺时针搅拌一下！');
+      const done = mixProgress >= 1;
+      el.textContent = `${mixMode === 'blender' ? '🧋' : '🥣'} 🔄 🌀 ${done ? '✅ ➡️ 🍳' : '✨'}`;
+      btn.textContent = done ? '➡️ 🍳' : (mixMode === 'blender' ? '🧋⚡' : '🥣🌀');
     } else if (station === 3) {
-      const pct = Math.min(100, Math.round((cookProgress / 0.75) * 100));
       if (cookProgress > 1.08) {
-        el.textContent = '💨 哇哈哈烤焦冒黑烟啦！快去装盘看看小动物吃黑炭的搞笑表情！';
-        btn.textContent = '🎂 出锅去挤奶油装盘！';
+        el.textContent = '💨 🖤 😵 ➡️ 🧁';
+        btn.textContent = '➡️ 🧁';
       } else if (cookProgress >= 0.65) {
-        el.textContent = '😋 金黄香喷喷熟透啦！可以出锅去挤奶油装饰，或者再翻面煎一下！';
-        btn.textContent = '🎂 出锅去挤奶油装盘！';
+        el.textContent = '😋 ⭐ ✅ ➡️ 🧁';
+        btn.textContent = '➡️ 🧁';
       } else {
-        el.textContent = cookMode === 'oven'
-          ? `⏲️ 魔法烤箱烘烤中 (${pct}%)：点按钮让蛋糕蓬松长高！`
-          : `🍳 铁板滋滋煎烤中 (${pct}%)：点锅柄或右侧按钮【颠锅翻面】！`;
-        btn.textContent = cookMode === 'oven' ? '⏲️ 叮！加速烘烤出炉' : '🍳 咻——颠锅翻面！';
+        el.textContent = `${cookMode === 'oven' ? '⏲️' : '🍳'} 🔥 🔄 ➡️ 😋`;
+        btn.textContent = cookMode === 'oven' ? '⏲️✨' : '🍳🔄';
       }
     } else if (station === 4) {
-      el.textContent = '🧁 手指在餐盘上拖动挤出立体奶油花、淋果酱、撒满彩虹糖和生日蜡烛！';
-      btn.textContent = '🍽️ 装饰好啦！端去喂小动物';
+      el.textContent = '👆 🧁 🍯 🌈 🕯️ ➡️ 🍽️';
+      btn.textContent = '➡️ 🍽️';
     } else if (station === 5) {
-      if (dish.bitesTaken >= 3) {
-        el.textContent = `${critterAnim.reactionTitle || '😋 全部光盘吃光光啦！'} （已自动拍照存入📖相册！）`;
-        btn.textContent = '✨ 再做一道新料理！';
-      } else if (dish.bitesTaken > 0) {
-        el.textContent = `${critterAnim.reactionTitle} 还可以继续喂它吃哦 (${dish.bitesTaken}/3 口)！`;
-        btn.textContent = `🥄 啊——呜！再喂一口 (${dish.bitesTaken}/3)`;
-      } else {
-        el.textContent = '🥄 拖动叉子/勺子把美食送到小动物嘴边（或点右侧按钮一口口喂它吃）！';
-        btn.textContent = '🥄 啊——呜！喂它吃一口';
-      }
+      const bites = '⭐'.repeat(dish.bitesTaken) + '⚪'.repeat(Math.max(0, 3 - dish.bitesTaken));
+      el.textContent = `🍴 ➡️ 👄 😋  ${bites}`;
+      btn.textContent = dish.bitesTaken >= 3 ? '🔄✨' : '🥄😋';
     }
   }
 
@@ -629,7 +602,6 @@ const KitchenGame = (() => {
     lastTs = now;
     t += dt;
 
-    // Update continuous animations
     if (boardItem && boardItem.knifeAnim > 0) {
       boardItem.knifeAnim = Math.max(0, boardItem.knifeAnim - dt * 4.5);
     }
@@ -646,7 +618,6 @@ const KitchenGame = (() => {
       }
     }
 
-    // Continuous skillet sizzle & cooking progression on Station 3
     if (station === 3 && panItems.length > 0 && cookMode === 'pan') {
       cookProgress += dt * 0.055 * heatLevel;
       syncCookedStateToDish();
@@ -673,20 +644,19 @@ const KitchenGame = (() => {
     ctx.save();
     ctx.scale(dpr, dpr);
 
-    // 1. Cozy Pastel Kitchen Wallpaper & Window Backdrop (Top 44% of Canvas)
+    // 1. Cozy Pastel Kitchen Wallpaper & Window Backdrop
     const wallGrad = ctx.createLinearGradient(0, 0, 0, H * 0.46);
     wallGrad.addColorStop(0, '#ffeef5');
     wallGrad.addColorStop(1, '#fff9e8');
     ctx.fillStyle = wallGrad;
     ctx.fillRect(0, 0, W, H * 0.46);
 
-    // Subtle pastel stripes on kitchen wall
     ctx.fillStyle = 'rgba(255, 182, 209, 0.18)';
     for (let x = 20; x < W; x += 56) {
       ctx.fillRect(x, 0, 22, H * 0.46);
     }
 
-    // Kitchen window & cute storybook jars on top right wall (below prep-tray overlay)
+    // Kitchen shelf & cute storybook jars on top right wall
     ctx.fillStyle = '#f0c49b';
     ctx.strokeStyle = '#c99364';
     ctx.lineWidth = 3;
@@ -699,16 +669,16 @@ const KitchenGame = (() => {
       ctx.fillText(em, W - 215 + idx * 50, 82);
     });
 
-    // 2. Animated Critter Customer sitting behind the counter!
+    // 2. Animated Critter Customer sitting behind the counter
     const critter = currentCritter();
     const critterX = W * 0.46;
     const critterY = H * 0.25;
     KitchenArt.drawCritterCustomer(ctx, critter, critterX, critterY, 1.08, critterAnim, t);
 
-    // 3. Wish Order Picture Bubble (Left of Critter)
+    // 3. Wish Order Picture Bubble (100% Visual Icons, Zero Text!)
     drawWishBubble(ctx, 32, 48);
 
-    // 4. Marble & Warm Wood Kitchen Countertop (Bottom 56% of Canvas)
+    // 4. Marble & Warm Wood Kitchen Countertop
     const counterY = H * 0.43;
     const counterGrad = ctx.createLinearGradient(0, counterY, 0, H);
     counterGrad.addColorStop(0, '#fffdf9');
@@ -776,8 +746,6 @@ const KitchenGame = (() => {
 
   function drawWishBubble(ctx, x, y) {
     ctx.save();
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'alphabetic';
     KitchenArt.rr(ctx, x, y, 258, 128, 22);
     ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
     ctx.fill();
@@ -796,11 +764,11 @@ const KitchenGame = (() => {
 
     if (mode === 'wish') {
       const ord = currentOrder();
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'alphabetic';
-      ctx.fillStyle = '#6b3854';
-      ctx.font = 'bold 14px system-ui, sans-serif';
-      ctx.fillText('💭 心愿点单：' + ord.zh, x + 14, y + 26);
+      const cookIcon = ord.wantCooking === 'oven' ? '⏲️' : (ord.wantCooking === 'blender' ? '🧋' : '🍳');
+      ctx.font = '22px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`💭 ➡️ ${cookIcon}`, x + 129, y + 24);
 
       const usedIds = new Set([
         ...prepTray.map(i => i.id),
@@ -811,55 +779,48 @@ const KitchenGame = (() => {
       const slots = [0, 1, 2];
       slots.forEach(idx => {
         const bx = x + 48 + idx * 80;
-        const by = y + 70;
+        const by = y + 80;
         const id = ord.wantIds[idx];
         const done = id ? usedIds.has(id) : (dish.piping.length > 0 || dish.toppings.length > 0 || cookProgress >= 0.6);
         ctx.fillStyle = done ? '#e6ffed' : '#fff5f8';
         ctx.strokeStyle = done ? '#34c759' : '#ffd1e0';
         ctx.lineWidth = 2.5;
-        KitchenArt.circ(ctx, bx, by, 26);
+        KitchenArt.circ(ctx, bx, by, 28);
         ctx.fill();
         ctx.stroke();
         if (id) {
           const ing = KitchenData.getIngredient(id);
-          KitchenArt.drawIngredient(ctx, id, bx, by, 19, { sliced: done && ing.choppable, shadow: false });
+          KitchenArt.drawIngredient(ctx, id, bx, by, 21, { sliced: done && ing.choppable, shadow: false });
         } else {
-          ctx.font = '24px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+          ctx.font = '26px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText(ord.icons[idx] || '🧁', bx, by + 2);
         }
         if (done) {
-          ctx.font = '15px sans-serif';
+          ctx.font = '16px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText('✅', bx + 18, by - 18);
+          ctx.fillText('✅', bx + 20, by - 20);
         }
       });
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'alphabetic';
-      ctx.fillStyle = '#8c5875';
-      ctx.font = '11.5px system-ui, sans-serif';
-      ctx.fillText(ord.desc, x + 14, y + 115);
     } else {
-      ctx.fillStyle = '#7a3e65';
-      ctx.font = 'bold 15px system-ui, sans-serif';
-      ctx.fillText('🌈 自由小厨神模式', x + 16, y + 32);
-      ctx.font = '13px system-ui, sans-serif';
-      ctx.fillStyle = '#8c5875';
-      ctx.fillText('随便选食材！试试加辣椒🌶️、', x + 16, y + 60);
-      ctx.fillText('柠檬🍋、跳跳糖✨或烤焦💨，', x + 16, y + 82);
-      ctx.fillText('看小动物有什么搞笑反应！', x + 16, y + 104);
+      ctx.font = '24px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🌈 🎨 ✨', x + 129, y + 32);
+      ctx.font = '20px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+      ctx.fillText('🌶️➡️🔥   🍋➡️😖', x + 129, y + 68);
+      ctx.fillText('🍦➡️🥶   ✨➡️🎈', x + 129, y + 102);
     }
     ctx.restore();
   }
 
   /* ==========================================================================
-   * Station 1 Renderer: Wooden Cutting Board + Chef Knife + Prep Tray
+   * Station 1 Renderer: Wooden Cutting Board + Chef Knife (Zero Text)
    * ========================================================================== */
   function renderChopStation(ctx) {
     const cx = W * 0.46, cy = H * 0.66;
-    // Wooden Cutting Board
     ctx.fillStyle = 'rgba(40,20,10,0.16)';
     KitchenArt.rr(ctx, cx - 175, cy - 82, 350, 174, 26);
     ctx.fill();
@@ -871,7 +832,6 @@ const KitchenGame = (() => {
     ctx.fill();
     ctx.stroke();
 
-    // Inner board groove
     ctx.strokeStyle = '#cf9658';
     ctx.lineWidth = 2.5;
     KitchenArt.rr(ctx, cx - 155, cy - 72, 310, 136, 18);
@@ -881,7 +841,6 @@ const KitchenGame = (() => {
       const meta = KitchenData.getIngredient(boardItem.id);
       const isSliced = boardItem.chops >= boardItem.maxChops && meta.choppable;
       if (meta.crackable) {
-        // Egg: show whole egg first, then 1 cracked egg with two parting shell halves!
         KitchenArt.drawIngredient(ctx, boardItem.id, cx, cy - 2, 54, {
           cracked: boardItem.chops >= 1,
           showShell: boardItem.chops >= 1,
@@ -919,22 +878,23 @@ const KitchenGame = (() => {
       ctx.fillText(meta.crackable ? '🥄' : '🔪', 0, 0);
       ctx.restore();
     } else {
-      ctx.fillStyle = '#9c6836';
-      ctx.font = 'bold 18px system-ui, sans-serif';
+      // Pure visual pictogram cue on empty cutting board
+      const bounceY = Math.sin(t * 5) * 6;
+      ctx.font = '44px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('👇 点下方食材放到菜板上切一切！', cx, cy);
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🍓  🔪  👆', cx, cy + bounceY);
     }
   }
 
   /* ==========================================================================
-   * Station 2 Renderer: Swirling Mixing Bowl & Boba Smoothie Blender
+   * Station 2 Renderer: Swirling Mixing Bowl & Boba Smoothie Blender (Zero Text)
    * ========================================================================== */
   function renderMixStation(ctx) {
     const cx = W * 0.46, cy = H * 0.68;
 
-    // Mode Toggle Pills (Bowl vs Blender) cleanly on Left of Counter
-    drawCanvasButton(ctx, 36, cy - 48, 148, 44, mixMode === 'bowl', '🥣 搅拌大碗');
-    drawCanvasButton(ctx, 36, cy + 8,  148, 44, mixMode === 'blender', '🧋 旋风榨汁杯');
+    drawCanvasButton(ctx, 36, cy - 52, 128, 48, mixMode === 'bowl', '🥣');
+    drawCanvasButton(ctx, 36, cy + 8,  128, 48, mixMode === 'blender', '🧋');
 
     if (mixMode === 'blender') {
       ctx.fillStyle = '#ff6b9d';
@@ -972,7 +932,6 @@ const KitchenGame = (() => {
       ctx.fill();
     }
 
-    // Swirling Vortex Rings & Floating Chunks
     ctx.save();
     ctx.translate(cx, mixMode === 'blender' ? cy - 20 : cy);
     ctx.rotate(mixAngle);
@@ -994,7 +953,6 @@ const KitchenGame = (() => {
     });
     ctx.restore();
 
-    // Wooden Whisk / Spoon inside Bowl
     if (mixMode === 'bowl') {
       ctx.save();
       ctx.translate(cx + Math.cos(mixAngle) * 28, cy - 18 + Math.sin(mixAngle) * 16);
@@ -1011,39 +969,37 @@ const KitchenGame = (() => {
       ctx.restore();
     }
 
-    // Right-Side Progress Card (never overlaps Critter paws!)
+    // Right-Side Visual Progress Card (Pure Icons + Progress Bar)
     const rx = cx + 175, ry = cy - 36;
-    KitchenArt.rr(ctx, rx, ry, 185, 72, 16);
+    KitchenArt.rr(ctx, rx, ry, 185, 76, 16);
     ctx.fillStyle = 'rgba(255,255,255,0.92)';
     ctx.fill();
     ctx.strokeStyle = '#ffb3cf';
     ctx.lineWidth = 2.5;
     ctx.stroke();
-    ctx.fillStyle = '#5c2d48';
-    ctx.font = 'bold 14px system-ui, sans-serif';
+    ctx.font = '24px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`🌀 搅拌融合度：${Math.round(mixProgress * 100)}%`, rx + 92, ry + 26);
-    KitchenArt.rr(ctx, rx + 18, ry + 42, 148, 14, 7);
+    ctx.textBaseline = 'middle';
+    ctx.fillText(mixProgress >= 1 ? '🥣 ✨ ✅' : '🥣 🌀 ✨', rx + 92, ry + 24);
+    KitchenArt.rr(ctx, rx + 18, ry + 46, 148, 14, 7);
     ctx.fillStyle = '#ffe3ed';
     ctx.fill();
     if (mixProgress > 0) {
-      KitchenArt.rr(ctx, rx + 18, ry + 42, Math.max(14, 148 * mixProgress), 14, 7);
+      KitchenArt.rr(ctx, rx + 18, ry + 46, Math.max(14, 148 * mixProgress), 14, 7);
       ctx.fillStyle = '#34c759';
       ctx.fill();
     }
   }
 
   /* ==========================================================================
-   * Station 3 Renderer: Sizzling Skillet Pan & Magic Bakery Oven
+   * Station 3 Renderer: Sizzling Skillet Pan & Magic Bakery Oven (Zero Text)
    * ========================================================================== */
   function renderCookStation(ctx) {
     const cx = W * 0.46, cy = H * 0.68;
 
-    // Left Toggle: Skillet Pan vs Magic Oven (cleanly separated at x = 36)
-    drawCanvasButton(ctx, 36, cy - 58, 148, 42, cookMode === 'pan', '🍳 滋滋铁板锅');
-    drawCanvasButton(ctx, 36, cy - 6,  148, 42, cookMode === 'oven', '⏲️ 魔法大烤箱');
+    drawCanvasButton(ctx, 36, cy - 58, 128, 44, cookMode === 'pan', '🍳');
+    drawCanvasButton(ctx, 36, cy - 6,  128, 44, cookMode === 'oven', '⏲️');
 
-    // Flame Level Selector for Pan
     if (cookMode === 'pan') {
       [1, 2, 3].forEach(lvl => {
         const active = heatLevel === lvl;
@@ -1128,24 +1084,23 @@ const KitchenGame = (() => {
       ctx.restore();
     }
 
-    // Right-Side Doneness Thermometer Card (never overlaps Critter paws!)
+    // Right-Side Doneness Thermometer Card (Pure Visual Icons)
     const rx = cx + 220, ry = cy - 52;
-    KitchenArt.rr(ctx, rx, ry, 200, 88, 16);
+    KitchenArt.rr(ctx, rx, ry, 200, 92, 16);
     ctx.fillStyle = 'rgba(255,255,255,0.94)';
     ctx.fill();
     ctx.strokeStyle = cookProgress > 1.08 ? '#ff3b3b' : '#ffb3cf';
     ctx.lineWidth = 2.5;
     ctx.stroke();
 
-    const statusText = cookProgress > 1.08
-      ? '💨 烤焦黑炭啦！'
-      : (cookProgress >= 0.60 ? '😋 金黄美味刚刚好！' : '🔥 滋滋加热中...');
-    ctx.fillStyle = cookProgress > 1.08 ? '#d92626' : '#5c2d48';
-    ctx.font = 'bold 14px system-ui, sans-serif';
+    const statusIcon = cookProgress > 1.08
+      ? '💨 🖤 😵'
+      : (cookProgress >= 0.60 ? '😋 ⭐ ✨' : '🔥 🍳 ⏳');
+    ctx.font = '22px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(statusText, rx + 100, ry + 26);
+    ctx.textBaseline = 'middle';
+    ctx.fillText(statusIcon, rx + 100, ry + 22);
 
-    // 3-zone thermometer bar (Raw -> Golden -> Burnt)
     const barX = rx + 16, barY = ry + 42, barW = 168, barH = 14;
     const g = ctx.createLinearGradient(barX, 0, barX + barW, 0);
     g.addColorStop(0, '#ffe89e');
@@ -1163,19 +1118,17 @@ const KitchenGame = (() => {
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#7a4b62';
-    ctx.font = '11px system-ui, sans-serif';
-    ctx.fillText('生 ── 😋金黄美味 ── 💨烤焦', rx + 100, ry + 75);
+    ctx.font = '16px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+    ctx.fillText('💧 ── 😋⭐ ── 💨', rx + 100, ry + 75);
   }
 
   /* ==========================================================================
-   * Station 4 Renderer: Plating, Piping Bag, Sauce Drizzle & Sprinkles
+   * Station 4 Renderer: Plating, Piping Bag, Sauce Drizzle & Sprinkles (Zero Text)
    * ========================================================================== */
   function renderDecorateStation(ctx) {
     const cx = W * 0.46, cy = H * 0.68;
-    // Vessel Switcher (Plate vs Cup) cleanly at x = 36
-    drawCanvasButton(ctx, 36, cy - 36, 148, 42, dish.vessel === 'plate', '🍽️ 精致花边盘');
-    drawCanvasButton(ctx, 36, cy + 16, 148, 42, dish.vessel === 'cup',   '🧋 透明奶茶杯');
+    drawCanvasButton(ctx, 36, cy - 38, 128, 44, dish.vessel === 'plate', '🍽️');
+    drawCanvasButton(ctx, 36, cy + 16, 128, 44, dish.vessel === 'cup',   '🧋');
 
     KitchenArt.drawDish(ctx, dish, cx, cy, 1.08, t);
   }
@@ -1187,11 +1140,9 @@ const KitchenGame = (() => {
     const cx = W * 0.46, cy = H * 0.66;
     KitchenArt.drawDish(ctx, dish, cx, cy, 1.05, t);
 
-    // Draw Interactive Silver Fork / Straw that Chuyu drags to the Critter's mouth!
     ctx.save();
     ctx.translate(fork.x, fork.y);
     ctx.rotate(-0.45);
-    // If fork has food loaded on it, show a mini delicious bite on the fork tip
     if (fork.dragging || dish.bitesTaken < 3) {
       const sampleId = dish.items.length > 0 ? dish.items[0].id : 'strawberry';
       KitchenArt.drawIngredient(ctx, sampleId, -18, -18, 22, { sliced: true, cooked: 0.72, shadow: false });
@@ -1202,7 +1153,6 @@ const KitchenGame = (() => {
     ctx.fillText(dish.vessel === 'cup' ? '🥄' : '🍴', 0, 0);
     ctx.restore();
 
-    // Dotted helper arrow from plate to Critter's mouth if not yet eaten
     if (dish.bitesTaken === 0 && !fork.dragging) {
       ctx.save();
       ctx.strokeStyle = 'rgba(255, 92, 138, 0.65)';
@@ -1215,37 +1165,35 @@ const KitchenGame = (() => {
       ctx.restore();
     }
 
-    // Reaction Banner Banner if active
-    if (critterAnim.reactionTitle) {
+    // Pure-Emoji Reaction Badge
+    if (critterAnim.reactionBadge) {
       ctx.save();
-      KitchenArt.rr(ctx, W * 0.5 - 210, H * 0.43 - 22, 420, 40, 20);
+      KitchenArt.rr(ctx, W * 0.5 - 110, H * 0.43 - 22, 220, 42, 21);
       ctx.fillStyle = '#fff0f6';
       ctx.fill();
       ctx.strokeStyle = '#ff4d88';
       ctx.lineWidth = 3;
       ctx.stroke();
-      ctx.fillStyle = '#b81d58';
-      ctx.font = 'bold 16px system-ui, sans-serif';
+      ctx.font = '26px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(critterAnim.reactionTitle, W * 0.5, H * 0.43 - 2);
+      ctx.fillText(critterAnim.reactionBadge, W * 0.5, H * 0.43 - 1);
       ctx.restore();
     }
   }
 
-  function drawCanvasButton(ctx, x, y, w, h, active, label) {
+  function drawCanvasButton(ctx, x, y, w, h, active, iconLabel) {
     ctx.save();
-    KitchenArt.rr(ctx, x, y, w, h, 14);
+    KitchenArt.rr(ctx, x, y, w, h, 16);
     ctx.fillStyle = active ? '#ff5c8a' : '#ffffff';
     ctx.fill();
     ctx.strokeStyle = active ? '#c92a5b' : '#e0b8c8';
     ctx.lineWidth = 2.5;
     ctx.stroke();
-    ctx.fillStyle = active ? '#ffffff' : '#5c2d48';
-    ctx.font = 'bold 14px system-ui, "Apple Color Emoji", sans-serif';
+    ctx.font = '26px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(label, x + w / 2, y + h / 2 + 1);
+    ctx.fillText(iconLabel, x + w / 2, y + h / 2 + 2);
     ctx.restore();
   }
 
@@ -1273,7 +1221,6 @@ const KitchenGame = (() => {
     lastPt = pt;
     const cx = W * 0.46, cy = H * 0.66;
 
-    // Tapping the Critter customer at top lets Chuyu hear them giggle!
     if (Math.hypot(pt.x - W * 0.46, pt.y - H * 0.25) < 75 && station !== 5) {
       KitchenAudio.reaction('love');
       spawnParticles(W * 0.46, H * 0.22, '#ff85b3', 10);
@@ -1286,10 +1233,9 @@ const KitchenGame = (() => {
         chopBoardItem();
       }
     } else if (station === 2) {
-      // Check Bowl vs Blender toggle buttons on left (x = 36..184)
-      if (pt.x >= 32 && pt.x <= 188) {
-        if (pt.y >= cy - 52 && pt.y <= cy) { mixMode = 'bowl'; dish.vessel = 'plate'; updateGuideBanner(); return; }
-        if (pt.y >= cy + 4 && pt.y <= cy + 56) { mixMode = 'blender'; dish.vessel = 'cup'; updateGuideBanner(); return; }
+      if (pt.x >= 32 && pt.x <= 170) {
+        if (pt.y >= cy - 56 && pt.y <= cy) { mixMode = 'bowl'; dish.vessel = 'plate'; updateGuideBanner(); return; }
+        if (pt.y >= cy + 4 && pt.y <= cy + 60) { mixMode = 'blender'; dish.vessel = 'cup'; updateGuideBanner(); return; }
       }
       if (Math.hypot(pt.x - cx, pt.y - cy) < 160) {
         stirMixer(0.2);
@@ -1307,13 +1253,12 @@ const KitchenGame = (() => {
         flipPan();
       }
     } else if (station === 4) {
-      if (pt.x >= 32 && pt.x <= 188) {
-        if (pt.y >= cy - 40 && pt.y <= cy + 8) { dish.vessel = 'plate'; return; }
-        if (pt.y >= cy + 12 && pt.y <= cy + 60) { dish.vessel = 'cup'; return; }
+      if (pt.x >= 32 && pt.x <= 170) {
+        if (pt.y >= cy - 42 && pt.y <= cy + 8) { dish.vessel = 'plate'; return; }
+        if (pt.y >= cy + 12 && pt.y <= cy + 64) { dish.vessel = 'cup'; return; }
       }
       const lx = (pt.x - cx) / 1.08;
       const ly = (pt.y - cy) / 1.08;
-      // Universal Candle Blowing: tapping a lit candle blows it out regardless of active tool!
       for (const tp of dish.toppings) {
         if (tp.id === 'candle' && !tp.blownOut && Math.hypot(tp.x - lx, tp.y - (ly + 24)) < 32) {
           tp.blownOut = true;
@@ -1346,7 +1291,6 @@ const KitchenGame = (() => {
     const pt = canvasCoords(e);
     const cx = W * 0.46, cy = H * 0.66;
 
-    // Subtle eye tracking toward pointer
     critterAnim.lookX = Math.max(-1, Math.min(1, (pt.x - W * 0.46) / 180));
     critterAnim.lookY = Math.max(-1, Math.min(1, (pt.y - H * 0.25) / 140));
 
@@ -1400,7 +1344,6 @@ const KitchenGame = (() => {
     pointerDown = false;
     activeStroke = null;
     if (fork.dragging) {
-      // If released near the plate or Critter, trigger a bite for effortless 5yo play!
       if (fork.y < H * 0.45) {
         feedOneBite();
       }
@@ -1412,21 +1355,16 @@ const KitchenGame = (() => {
   }
 
   /* ==========================================================================
-   * DOM UI Builders (Category Drawers, Prep Tray, Decor Toolbar, Album Modal)
+   * DOM UI Builders (100% Zero-Text Picture & Icon Controls)
    * ========================================================================== */
   function renderCustomerBar() {
     const wrap = document.getElementById('customerStrip');
     if (!wrap) return;
     wrap.innerHTML = '';
-    const shortNames = {
-      catnap: '紫猫', picky: '小猪', dogday: '小狗', bobby: '小熊',
-      hoppy: '绿兔', craftycorn: '独角', bubba: '小象', poppy: '小鸟',
-    };
     KitchenData.CRITTERS.forEach((c, idx) => {
       const btn = document.createElement('button');
       btn.className = 'critter-chip' + (idx === critterIdx ? ' active' : '');
-      btn.title = c.name;
-      btn.innerHTML = `<img src="icons/${c.icon}.jpg" alt="${c.en}"><span>${shortNames[c.id] || c.name.split(' ')[0]}</span>`;
+      btn.innerHTML = `<img src="icons/${c.icon}.jpg" alt="">`;
       btn.onclick = () => {
         critterIdx = idx;
         KitchenAudio.speak(c.greeting, c.en);
@@ -1440,10 +1378,16 @@ const KitchenGame = (() => {
     const tabWrap = document.getElementById('catTabs');
     if (!tabWrap) return;
     tabWrap.innerHTML = '';
+    const catIcons = {
+      fruit:  '🍓 🍌 🍑',
+      meat:   '🥚 🥩 🧀',
+      veggie: '🍞 🍕 🍅',
+      magic:  '🥛 🍫 🍦',
+    };
     KitchenData.CATEGORIES.forEach(cat => {
       const btn = document.createElement('button');
       btn.className = 'cat-tab' + (cat.id === activeCategory ? ' active' : '');
-      btn.textContent = cat.name;
+      btn.textContent = catIcons[cat.id] || '🍓';
       btn.onclick = () => {
         activeCategory = cat.id;
         renderCategoryTabs();
@@ -1461,7 +1405,15 @@ const KitchenGame = (() => {
       const btn = document.createElement('button');
       btn.className = 'ing-card';
       btn.dataset.ing = item.id;
-      btn.innerHTML = `<span class="ing-emoji">${item.emoji}</span><span class="ing-label">${item.zh}</span>`;
+      const cv = document.createElement('canvas');
+      cv.width = 96;
+      cv.height = 84;
+      cv.style.width = '48px';
+      cv.style.height = '42px';
+      const icx = cv.getContext('2d');
+      icx.scale(2, 2);
+      KitchenArt.drawIngredient(icx, item.id, 24, 21, 18, { sliced: false, shadow: false });
+      btn.appendChild(cv);
       btn.onclick = () => selectIngredient(item.id);
       shelf.appendChild(btn);
     });
@@ -1471,12 +1423,12 @@ const KitchenGame = (() => {
     const tray = document.getElementById('prepTrayStrip');
     if (!tray) return;
     if (prepTray.length === 0) {
-      tray.innerHTML = '<span class="tray-empty">🧺 备菜篮：切好的食材会放进这里~</span>';
+      tray.innerHTML = '<span class="tray-empty">🧺 ✨</span>';
       return;
     }
-    tray.innerHTML = '<span class="tray-title">🧺 已备好：</span>' + prepTray.slice(-8).map(p => {
+    tray.innerHTML = '<span>🧺</span>' + prepTray.slice(-8).map(p => {
       const m = KitchenData.getIngredient(p.id);
-      return `<span class="tray-pill">${m.emoji} ${m.zh}</span>`;
+      return `<span class="tray-pill">${m.emoji}</span>`;
     }).join('');
   }
 
@@ -1485,11 +1437,10 @@ const KitchenGame = (() => {
     if (!bar) return;
     bar.innerHTML = '';
 
-    // Tool Type Switcher
     const tools = [
-      { id: 'piping', label: '🧁 挤立体奶油花' },
-      { id: 'sauce',  label: '🍯 淋果酱汁' },
-      { id: 'topping',label: '🌈 撒糖珠与蜡烛' },
+      { id: 'piping',  label: '🧁' },
+      { id: 'sauce',   label: '🍯' },
+      { id: 'topping', label: '🌈 🕯️' },
     ];
     const modeRow = document.createElement('div');
     modeRow.className = 'decor-modes';
@@ -1511,7 +1462,7 @@ const KitchenGame = (() => {
       KitchenData.PIPING_COLORS.forEach((p, idx) => {
         const b = document.createElement('button');
         b.className = 'swatch-btn' + (pipingColorIdx === idx ? ' active' : '');
-        b.innerHTML = `<span class="swatch-dot" style="background:${p.color}"></span>${p.zh}`;
+        b.innerHTML = `<span class="swatch-dot" style="background:${p.color}"></span>🧁`;
         b.onclick = () => { pipingColorIdx = idx; renderDecorToolbar(); };
         optRow.appendChild(b);
       });
@@ -1519,7 +1470,7 @@ const KitchenGame = (() => {
       KitchenData.SAUCES.forEach((s, idx) => {
         const b = document.createElement('button');
         b.className = 'swatch-btn' + (sauceIdx === idx ? ' active' : '');
-        b.innerHTML = `<span class="swatch-dot" style="background:${s.color}"></span>${s.zh}`;
+        b.innerHTML = `<span class="swatch-dot" style="background:${s.color}"></span>🍯`;
         b.onclick = () => { sauceIdx = idx; renderDecorToolbar(); };
         optRow.appendChild(b);
       });
@@ -1527,7 +1478,7 @@ const KitchenGame = (() => {
       KitchenData.TOPPINGS.forEach((tp, idx) => {
         const b = document.createElement('button');
         b.className = 'swatch-btn' + (toppingIdx === idx ? ' active' : '');
-        b.textContent = `${tp.emoji} ${tp.zh}`;
+        b.textContent = tp.emoji;
         b.onclick = () => { toppingIdx = idx; renderDecorToolbar(); };
         optRow.appendChild(b);
       });
@@ -1540,15 +1491,15 @@ const KitchenGame = (() => {
     const grid = document.getElementById('albumGrid');
     if (!modal || !grid) return;
     if (album.length === 0) {
-      grid.innerHTML = '<div class="album-empty">📸 还没有拍下料理照片哦！去第 5 步喂小动物吃一口，就会自动拍照贴进相册啦！</div>';
+      grid.innerHTML = '<div class="album-empty">📸 ➕ 🍽️ 😋</div>';
     } else {
       grid.innerHTML = album.map(entry => `
         <div class="album-card">
-          <img src="${entry.dataUrl}" class="album-photo" alt="${entry.title}">
+          <img src="${entry.dataUrl}" class="album-photo" alt="">
           <div class="album-meta">
-            <div class="album-dish-title">${entry.title} ${'⭐'.repeat(entry.stars || 3)}</div>
-            <div class="album-rxn">${entry.reactionTitle}</div>
-            <div class="album-customer"><img src="icons/${entry.critterIcon}.jpg" alt=""> ${entry.critterName} · ${entry.time}</div>
+            <img src="icons/${entry.critterIcon || 'icon_bobby_bearhug'}.jpg" class="album-critter-icon" alt="">
+            <span>${entry.reactionBadge || '😍 💖 ⭐'}</span>
+            <span>${'⭐'.repeat(entry.stars || 3)}</span>
           </div>
         </div>
       `).join('');
@@ -1570,7 +1521,6 @@ const KitchenGame = (() => {
       else flipPan();
     } else if (station === 4) {
       if (dish.piping.length === 0 && dish.toppings.length === 0) {
-        // Auto-add a cute cream swirl ring if she clicks Next right away
         for (let a = 0; a < PI2; a += PI2 / 8) {
           addPipingPoint(Math.cos(a) * 52, Math.sin(a) * 34 - 16);
         }
@@ -1616,32 +1566,27 @@ const KitchenGame = (() => {
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
 
-    // Station buttons
     document.querySelectorAll('.station-btn').forEach(btn => {
       btn.addEventListener('click', () => setStation(Number(btn.dataset.station)));
     });
 
-    // Primary helper button
     const pBtn = document.getElementById('primaryActionBtn');
     if (pBtn) pBtn.addEventListener('click', onPrimaryActionClick);
 
-    // Mode toggle button
     const modeBtn = document.getElementById('modeToggleBtn');
     if (modeBtn) {
       modeBtn.addEventListener('click', () => {
         mode = mode === 'wish' ? 'free' : 'wish';
-        modeBtn.textContent = mode === 'wish' ? '📋 心愿点单模式' : '🌈 自由沙盒模式';
+        modeBtn.textContent = mode === 'wish' ? '💭' : '🎨';
         updateGuideBanner();
       });
     }
 
-    // New Dish / Next Order button
     const newBtn = document.getElementById('newDishBtn');
     if (newBtn) {
       newBtn.addEventListener('click', () => resetKitchenForNewDish(true));
     }
 
-    // Album Modal buttons
     const albumBtn = document.getElementById('openAlbumBtn');
     if (albumBtn) albumBtn.addEventListener('click', openAlbumModal);
     const closeAlbum = document.getElementById('closeAlbumBtn');
@@ -1651,13 +1596,12 @@ const KitchenGame = (() => {
       });
     }
 
-    // Voice & Sound buttons
     const voiceBtn = document.getElementById('voiceToggleBtn');
     if (voiceBtn) {
       voiceBtn.addEventListener('click', () => {
         const v = !KitchenAudio.isVoiceEnabled();
         KitchenAudio.setVoiceEnabled(v);
-        voiceBtn.textContent = v ? '🗣️ 语音: 开' : '🗣️ 语音: 关';
+        voiceBtn.textContent = v ? '🗣️' : '🙊';
       });
     }
     const muteBtn = document.getElementById('muteToggleBtn');
@@ -1665,7 +1609,7 @@ const KitchenGame = (() => {
       muteBtn.addEventListener('click', () => {
         const m = !KitchenAudio.isMuted();
         KitchenAudio.setMuted(m);
-        muteBtn.textContent = m ? '🔇 静音' : '🔊 音效';
+        muteBtn.textContent = m ? '🔇' : '🔊';
       });
     }
 

@@ -3,31 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>🌈🍳 楚楚的彩虹料理屋 — Chuyu's Rainbow Kitchen!</title>
+  <title>🌈🍳</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <div class="kitchen-app">
-    <!-- 1. Top Header Bar -->
+    <!-- 1. Top Header Bar (100% Icon-Only for 5yo) -->
     <header class="top-header">
       <div class="brand-title">
-        <span>🌈🍳 楚楚的彩虹料理屋</span>
+        <span>🌈🍳</span>
       </div>
-      <div class="customer-strip" id="customerStrip" aria-label="选择小动物客人"></div>
+      <div class="customer-strip" id="customerStrip"></div>
       <div class="top-actions">
-        <span class="star-badge" title="获得的美味星星">⭐ <span id="starCount">0</span></span>
-        <button class="pill-btn gold" id="openAlbumBtn">📖 贴纸相册 (<span id="albumCount">0</span>)</button>
-        <button class="pill-btn" id="modeToggleBtn">📋 心愿点单模式</button>
-        <button class="pill-btn" id="newDishBtn">🔄 换个新菜</button>
-        <button class="pill-btn" id="voiceToggleBtn">🗣️ 语音: 开</button>
-        <button class="pill-btn" id="muteToggleBtn">🔊 音效</button>
+        <span class="star-badge">⭐ <span id="starCount">0</span></span>
+        <button class="pill-btn gold" id="openAlbumBtn">📸 <span id="albumCount">0</span></button>
+        <button class="pill-btn" id="modeToggleBtn">💭</button>
+        <button class="pill-btn" id="newDishBtn">🔄</button>
+        <button class="pill-btn" id="voiceToggleBtn">🗣️</button>
+        <button class="pill-btn" id="muteToggleBtn">🔊</button>
       </div>
     </header>
 
-    <!-- 2. Kid-Friendly Step Prompt & 1-Tap Action Button -->
+    <!-- 2. Visual Pictogram Step Bar & Giant 1-Tap Action Button -->
     <section class="guide-strip">
-      <div class="step-prompt" id="stepPromptText">👇 从下方点选喜欢的食材放到菜板上切一切吧！</div>
-      <button class="primary-action-btn" id="primaryActionBtn">🔪 咔嚓切一刀！</button>
+      <div class="step-prompt" id="stepPromptText">👆 🍓 🍌 🥚 ➡️ 🔪</div>
+      <button class="primary-action-btn" id="primaryActionBtn">🔪✨</button>
     </section>
 
     <!-- 3. Main Interactive 2D Storybook Kitchen Canvas -->
@@ -36,7 +36,7 @@
       <div class="prep-tray-overlay" id="prepTrayStrip"></div>
     </main>
 
-    <!-- 4A. Ingredient Drawer (Visible on Stations 1, 2, 3) -->
+    <!-- 4A. Ingredient Picture Drawer (Visible on Stations 1, 2, 3) -->
     <section class="bottom-shelf-panel" id="ingredientDrawer">
       <div class="cat-tabs" id="catTabs"></div>
       <div class="ingredient-shelf" id="ingredientShelf"></div>
@@ -45,22 +45,22 @@
     <!-- 4B. Decoration & Piping Toolbar (Visible on Station 4) -->
     <section class="bottom-shelf-panel" id="decorToolbar" style="display:none;"></section>
 
-    <!-- 5. 5-Station Kitchen Navigation Dock -->
-    <nav class="station-dock" aria-label="料理步骤工位">
-      <button class="station-btn active" data-station="1">🔪 1. 切菜备料</button>
-      <button class="station-btn" data-station="2">🥣 2. 搅拌榨汁</button>
-      <button class="station-btn" data-station="3">🍳 3. 煎锅烤箱</button>
-      <button class="station-btn" data-station="4">🎂 4. 挤奶油装饰</button>
-      <button class="station-btn" data-station="5">🍽️ 5. 喂食试吃</button>
+    <!-- 5. 5-Station Giant Icon Navigation Dock -->
+    <nav class="station-dock">
+      <button class="station-btn active" data-station="1">🔪</button>
+      <button class="station-btn" data-station="2">🥣</button>
+      <button class="station-btn" data-station="3">🍳</button>
+      <button class="station-btn" data-station="4">🧁</button>
+      <button class="station-btn" data-station="5">🍽️</button>
     </nav>
   </div>
 
-  <!-- Photo Sticker Album Modal -->
+  <!-- Photo Sticker Album Modal (100% Zero-Text) -->
   <div class="modal-backdrop hidden" id="albumModal">
     <div class="modal-card">
       <div class="modal-header">
-        <span>📖 楚楚的小厨神贴纸相册</span>
-        <button class="pill-btn" id="closeAlbumBtn">✖ 关闭</button>
+        <span>📸 ⭐</span>
+        <button class="pill-btn" id="closeAlbumBtn">✖</button>
       </div>
       <div class="album-grid" id="albumGrid"></div>
     </div>
