@@ -312,7 +312,8 @@ const KitchenArt = (() => {
       }
 
       case 'oven': {
-        ctx.fillStyle = '#F4D5B8';
+        // Pastel mint-green HT Mini Oven icon
+        ctx.fillStyle = '#8ED6B8';
         ctx.strokeStyle = OUTLINE;
         ctx.lineWidth = Math.max(1.8, r * 0.09);
         rr(ctx, -r * 0.76, -r * 0.68, r * 1.52, r * 1.36, r * 0.22);
@@ -325,11 +326,39 @@ const KitchenArt = (() => {
         ctx.fillStyle = '#E69849';
         rr(ctx, -r * 0.36, r * 0.02, r * 0.72, r * 0.36, r * 0.12);
         ctx.fill();
-        ctx.fillStyle = '#E8998D';
+        ctx.fillStyle = '#ECEEF0';
         [-r * 0.36, 0, r * 0.36].forEach(dx => {
           circ(ctx, dx, -r * 0.48, r * 0.09);
           ctx.fill();
+          ctx.stroke();
         });
+        break;
+      }
+
+      case 'candy_balls': {
+        drawSpecularCandyBall(ctx, 0, 0, r * 0.55, '#FF2A2A');
+        drawSpecularCandyBall(ctx, -r * 0.35, r * 0.2, r * 0.42, '#FFE619');
+        drawSpecularCandyBall(ctx, r * 0.35, r * 0.2, r * 0.42, '#2986FF');
+        break;
+      }
+
+      case 'rainbow_arch': {
+        drawRainbowArchFigurine(ctx, 0, r * 0.1, r * 0.024);
+        break;
+      }
+
+      case 'flower_pot': {
+        drawYellowSunflowerPot(ctx, 0, r * 0.05, r * 0.025);
+        break;
+      }
+
+      case 'turntable': {
+        drawWhiteCakeTurntable(ctx, 0, r * 0.1, r * 0.85, r * 0.45, t * 2, t);
+        break;
+      }
+
+      case 'rosette': {
+        drawButtercreamRosette(ctx, 0, 0, r * 0.65, '#FF2A2A');
         break;
       }
 
@@ -671,6 +700,481 @@ const KitchenArt = (() => {
   }
 
   /* ==========================================================================
+   * 1b. HT Mini Cakes Miniature Props & Figurines (zuCz-X1TrMM)
+   * ========================================================================== */
+  function drawSpecularCandyBall(ctx, x, y, r, color) {
+    ctx.save();
+    ctx.translate(x, y);
+    // Soft contact drop shadow
+    ctx.fillStyle = 'rgba(40, 20, 10, 0.28)';
+    ell(ctx, 1, r * 0.75, r * 0.9, r * 0.38);
+    ctx.fill();
+    // 3D spherical radial gradient
+    const rg = ctx.createRadialGradient(-r * 0.32, -r * 0.35, r * 0.08, 0, 0, r);
+    rg.addColorStop(0, lighten(color, 0.45));
+    rg.addColorStop(0.5, color);
+    rg.addColorStop(1, darken(color, 0.35));
+    ctx.fillStyle = rg;
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = Math.max(1.4, r * 0.12);
+    circ(ctx, 0, 0, r);
+    ctx.fill();
+    ctx.stroke();
+    // Specular catchlight: primary bright white curved reflection (as in yt_maxresdefault.jpg)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ell(ctx, -r * 0.36, -r * 0.38, r * 0.35, r * 0.22, -0.6);
+    ctx.fill();
+    // Secondary sharp specular pin-point dot
+    circ(ctx, -r * 0.15, -r * 0.52, r * 0.1);
+    ctx.fill();
+    // Subtle bounce light on bottom edge
+    ctx.fillStyle = rgba(lighten(color, 0.6), 0.35);
+    ell(ctx, r * 0.25, r * 0.42, r * 0.4, r * 0.15, 0.4);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawButtercreamRosette(ctx, x, y, r, color) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = 'rgba(40, 20, 10, 0.22)';
+    ell(ctx, 1, r * 0.65, r * 0.95, r * 0.4);
+    ctx.fill();
+    ctx.fillStyle = color;
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = Math.max(1.4, r * 0.1);
+    // Outer fluted scalloped petals
+    for (let k = 0; k < 7; k++) {
+      const a = (k / 7) * PI2;
+      const px = Math.cos(a) * r * 0.52, py = Math.sin(a) * r * 0.42;
+      circ(ctx, px, py, r * 0.44);
+      ctx.fill();
+      ctx.stroke();
+    }
+    // Swirling center core
+    const cg = ctx.createRadialGradient(-r * 0.2, -r * 0.2, 2, 0, 0, r * 0.7);
+    cg.addColorStop(0, lighten(color, 0.35));
+    cg.addColorStop(0.7, color);
+    cg.addColorStop(1, darken(color, 0.25));
+    ctx.fillStyle = cg;
+    circ(ctx, 0, -r * 0.05, r * 0.62);
+    ctx.fill();
+    ctx.stroke();
+    // Internal rosette spiral crease lines
+    ctx.strokeStyle = darken(color, 0.3);
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    for (let k = 0; k <= 14; k++) {
+      const a = k * 0.48;
+      const rad = r * 0.08 + k * r * 0.036;
+      const px = Math.cos(a) * rad, py = Math.sin(a) * rad * 0.78 - r * 0.06;
+      if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    // Creamy glossy highlight on spiral crest
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+    ell(ctx, -r * 0.22, -r * 0.28, r * 0.22, r * 0.12, -0.5);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawWhiteCakeTurntable(ctx, cx, cy, rx, ry, angle, t) {
+    rx = rx || 142;
+    ry = ry || 76;
+    angle = angle || 0;
+    ctx.save();
+    ctx.translate(cx, cy);
+    // Base contact drop shadow
+    softShadow(ctx, 0, 72, rx * 0.85, 22, 0.22);
+    // Sturdy white pedestal base
+    const baseW = rx * 0.44;
+    const bg = ctx.createLinearGradient(-baseW, 0, baseW, 0);
+    bg.addColorStop(0, '#ECEAE4');
+    bg.addColorStop(0.3, '#FAF9F6');
+    bg.addColorStop(0.7, '#FFFFFF');
+    bg.addColorStop(1, '#E4E2DC');
+    ctx.fillStyle = bg;
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 3.2;
+    // Curved flared pedestal stand
+    ctx.beginPath();
+    ctx.moveTo(-baseW * 0.6, 24);
+    ctx.quadraticCurveTo(-baseW * 0.4, 46, -baseW, 64);
+    ctx.lineTo(baseW, 64);
+    ctx.quadraticCurveTo(baseW * 0.4, 46, baseW * 0.6, 24);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Chrome connector collar ring
+    ctx.fillStyle = '#C9D4DC';
+    rr(ctx, -baseW * 0.65, 22, baseW * 1.3, 8, 4);
+    ctx.fill();
+    ctx.stroke();
+    // Beveled turntable disc thickness
+    const thick = 14;
+    ctx.fillStyle = '#E8E6E0';
+    ctx.beginPath();
+    ctx.ellipse(0, thick, rx, ry, 0, 0, PI);
+    ctx.lineTo(-rx, 0);
+    ctx.ellipse(0, 0, rx, ry, 0, PI, 0, true);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Top rotating white disc surface
+    const discG = ctx.createRadialGradient(-rx * 0.2, -ry * 0.2, rx * 0.1, 0, 0, rx);
+    discG.addColorStop(0, '#FFFFFF');
+    discG.addColorStop(0.85, '#FAF9F7');
+    discG.addColorStop(1, '#F0EFEA');
+    ctx.fillStyle = discG;
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 3.5;
+    ell(ctx, 0, 0, rx, ry);
+    ctx.fill();
+    ctx.stroke();
+    // Subtle turntable concentric concentric rings / groove
+    ctx.strokeStyle = 'rgba(215, 210, 202, 0.7)';
+    ctx.lineWidth = 1.8;
+    ell(ctx, 0, 0, rx * 0.88, ry * 0.88);
+    ctx.stroke();
+    ell(ctx, 0, 0, rx * 0.66, ry * 0.66);
+    ctx.stroke();
+    // Subtle rotating ticks/dots that show the rotation smoothly
+    for (let k = 0; k < 16; k++) {
+      const a = (k / 16) * PI2 + angle;
+      const px = Math.cos(a) * rx * 0.88, py = Math.sin(a) * ry * 0.88;
+      ctx.fillStyle = 'rgba(180, 172, 160, 0.6)';
+      circ(ctx, px, py, 2.2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawYellowSunflowerPot(ctx, x, y, scale) {
+    scale = scale || 1;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 2.4;
+    // Pot base (warm amber/orange)
+    ctx.fillStyle = '#FF9E1B';
+    rr(ctx, -18, 12, 36, 26, 8);
+    ctx.fill();
+    ctx.stroke();
+    // Pot rim
+    ctx.fillStyle = '#FFAE34';
+    rr(ctx, -21, 8, 42, 9, 4);
+    ctx.fill();
+    ctx.stroke();
+    // Green leaves
+    ctx.fillStyle = '#2DBE56';
+    [-18, 18].forEach(lx => {
+      ctx.beginPath();
+      ctx.ellipse(lx, 10, 8, 5, lx < 0 ? -0.4 : 0.4, 0, PI2);
+      ctx.fill();
+      ctx.stroke();
+    });
+    // Sunflower petals (bright sunshine yellow)
+    ctx.fillStyle = '#FFD700';
+    for (let k = 0; k < 10; k++) {
+      const a = (k / 10) * PI2;
+      circ(ctx, Math.cos(a) * 16, -10 + Math.sin(a) * 16, 7);
+      ctx.fill();
+      ctx.stroke();
+    }
+    // Cute round smiling face
+    ctx.fillStyle = '#FFF5E0';
+    circ(ctx, 0, -10, 15);
+    ctx.fill();
+    ctx.stroke();
+    // Eyes
+    ctx.fillStyle = OUTLINE;
+    circ(ctx, -5, -11, 2.2);
+    circ(ctx, 5, -11, 2.2);
+    ctx.fill();
+    // Gentle pink cheeks
+    ctx.fillStyle = 'rgba(255, 130, 130, 0.65)';
+    circ(ctx, -8, -7, 2.8);
+    circ(ctx, 8, -7, 2.8);
+    ctx.fill();
+    // Sweet smile
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(0, -9, 4, 0.2, PI - 0.2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawRainbowArchFigurine(ctx, x, y, scale) {
+    scale = scale || 1;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 2.2;
+    // 6 concentric rainbow bands
+    const cols = ['#FF2A2A', '#FF8C1A', '#FFE619', '#1FD141', '#2986FF', '#8C2BFF'];
+    const rOuter = 34, bandW = 4.2;
+    for (let i = 0; i < 6; i++) {
+      const rad = rOuter - i * bandW;
+      ctx.strokeStyle = cols[i];
+      ctx.lineWidth = bandW + 0.8;
+      ctx.beginPath();
+      ctx.arc(0, 14, rad, PI, 0);
+      ctx.stroke();
+    }
+    // Outlines
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.arc(0, 14, rOuter + 2, PI, 0);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 14, rOuter - 6 * bandW - 1, PI, 0);
+    ctx.stroke();
+    // Cloud pedestals at left and right base
+    [-rOuter + 3, rOuter - 3].forEach(cx0 => {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.strokeStyle = OUTLINE;
+      ctx.lineWidth = 2;
+      circ(ctx, cx0 - 5, 14, 7);
+      circ(ctx, cx0, 10, 9);
+      circ(ctx, cx0 + 5, 14, 7);
+      ctx.fill();
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  function drawWhiteCeramicDaisyPot(ctx, x, y) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = '#FFFDF9';
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 2.2;
+    rr(ctx, -14, 4, 28, 22, 5);
+    ctx.fill();
+    ctx.stroke();
+    // Green leaves
+    ctx.fillStyle = '#4CAE68';
+    [-8, 0, 8].forEach(lx => {
+      circ(ctx, lx, 2, 4);
+      ctx.fill();
+    });
+    // 3 white daisies with yellow centers
+    [[-8, -6], [0, -12], [8, -6]].forEach(([dx, dy]) => {
+      ctx.fillStyle = '#FFFFFF';
+      for (let k = 0; k < 6; k++) {
+        const a = (k / 6) * PI2;
+        circ(ctx, dx + Math.cos(a) * 5, dy + Math.sin(a) * 5, 2.6);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#FFD700';
+      circ(ctx, dx, dy, 3.2);
+      ctx.fill();
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  function drawGlassCupcakeStand(ctx, x, y, r, t) {
+    r = r || 42;
+    ctx.save();
+    ctx.translate(x, y);
+    // Pedestal stem & foot
+    ctx.fillStyle = 'rgba(235, 248, 255, 0.65)';
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 2.4;
+    ell(ctx, 0, 28, r * 0.7, 9);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-5, 0);
+    ctx.lineTo(-7, 26);
+    ctx.lineTo(7, 26);
+    ctx.lineTo(5, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Glass plate
+    ell(ctx, 0, 0, r, 12);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.lineWidth = 2;
+    ell(ctx, 0, -2, r * 0.85, 8);
+    ctx.stroke();
+    // 3 miniature cupcakes (pink, yellow, mint)
+    const cakeData = [
+      { x: -r * 0.45, y: -8, swirl: '#FFA8C2', cherry: '#FF2A4D' },
+      { x: 0, y: -12, swirl: '#FFF07A', cherry: '#FF3D3D' },
+      { x: r * 0.45, y: -8, swirl: '#8AE2BF', cherry: '#E02040' },
+    ];
+    cakeData.forEach(cd => {
+      ctx.save();
+      ctx.translate(cd.x, cd.y);
+      // Liner cup
+      ctx.fillStyle = '#F4CCA1';
+      ctx.strokeStyle = OUTLINE;
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(-8, 0);
+      ctx.lineTo(-6, 9);
+      ctx.lineTo(6, 9);
+      ctx.lineTo(8, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Swirl frosting
+      ctx.fillStyle = cd.swirl;
+      circ(ctx, -4, -2, 6);
+      circ(ctx, 4, -2, 6);
+      circ(ctx, 0, -6, 7);
+      ctx.fill();
+      ctx.stroke();
+      // Cherry
+      ctx.fillStyle = cd.cherry;
+      circ(ctx, 0, -12, 3.2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    });
+    ctx.restore();
+  }
+
+  function drawPastelMiniOven(ctx, x, y, w, h, t) {
+    w = w || 116;
+    h = h || 82;
+    ctx.save();
+    ctx.translate(x, y);
+    softShadow(ctx, 0, h * 0.5 + 4, w * 0.9, 14, 0.2);
+    // Mint oven body
+    const og = ctx.createLinearGradient(-w / 2, -h / 2, w / 2, h / 2);
+    og.addColorStop(0, '#A6E5CC');
+    og.addColorStop(0.5, '#8ED6B8');
+    og.addColorStop(1, '#77C4A5');
+    ctx.fillStyle = og;
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 3.2;
+    rr(ctx, -w / 2, -h / 2, w, h, 14);
+    ctx.fill();
+    ctx.stroke();
+    // Rubber feet
+    ctx.fillStyle = '#443A34';
+    rr(ctx, -w / 2 + 8, h / 2 - 2, 12, 6, 2);
+    rr(ctx, w / 2 - 20, h / 2 - 2, 12, 6, 2);
+    ctx.fill();
+    // Warm glowing glass window
+    const winW = w * 0.62, winH = h * 0.62;
+    const winX = -w / 2 + 10, winY = -h / 2 + 12;
+    ctx.save();
+    rr(ctx, winX, winY, winW, winH, 8);
+    ctx.clip();
+    const wg = ctx.createRadialGradient(winX + winW * 0.5, winY + winH * 0.5, 6, winX + winW * 0.5, winY + winH * 0.5, winW * 0.7);
+    wg.addColorStop(0, '#FFE8A3');
+    wg.addColorStop(0.6, '#FFB347');
+    wg.addColorStop(1, '#8C481A');
+    ctx.fillStyle = wg;
+    ctx.fillRect(winX - 5, winY - 5, winW + 10, winH + 10);
+    // Miniature cake pan inside rising
+    ctx.fillStyle = '#D4883B';
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 1.6;
+    ell(ctx, winX + winW * 0.5, winY + winH * 0.65, winW * 0.32, 8);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#FFDD80';
+    ell(ctx, winX + winW * 0.5, winY + winH * 0.54, winW * 0.28, 7);
+    ctx.fill();
+    ctx.stroke();
+    // Warm gentle steam
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(winX + winW * 0.5 - 6, winY + winH * 0.42);
+    ctx.quadraticCurveTo(winX + winW * 0.5, winY + winH * 0.32, winX + winW * 0.5 - 4, winY + winH * 0.22);
+    ctx.stroke();
+    ctx.restore();
+    // Glass border & reflection
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 2.4;
+    rr(ctx, winX, winY, winW, winH, 8);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(winX + 6, winY + winH - 8);
+    ctx.lineTo(winX + winW - 14, winY + 8);
+    ctx.stroke();
+    // Chrome door handle
+    ctx.fillStyle = '#C9D4DC';
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 2;
+    rr(ctx, winX + 8, winY + winH + 3, winW - 16, 5, 2.5);
+    ctx.fill();
+    ctx.stroke();
+    // Control dials on right panel
+    const dialX = w / 2 - 16;
+    [-h * 0.22, h * 0.12].forEach((dy, idx) => {
+      ctx.fillStyle = '#ECEEF0';
+      ctx.strokeStyle = OUTLINE;
+      ctx.lineWidth = 2;
+      circ(ctx, dialX, dy, 7.5);
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = OUTLINE;
+      ctx.lineWidth = 1.5;
+      const da = -1.2 + idx * 1.6 + Math.sin(t * 1.2 + idx) * 0.2;
+      ctx.beginPath();
+      ctx.moveTo(dialX, dy);
+      ctx.lineTo(dialX + Math.cos(da) * 5, dy + Math.sin(da) * 5);
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  function drawMiniKitchenScale(ctx, x, y, r, t) {
+    r = r || 32;
+    ctx.save();
+    ctx.translate(x, y);
+    // Base unit
+    ctx.fillStyle = '#FFB8C6';
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 2.4;
+    rr(ctx, -r * 0.6, 0, r * 1.2, r * 0.9, 6);
+    ctx.fill();
+    ctx.stroke();
+    // Round gauge dial
+    ctx.fillStyle = '#FFFFFF';
+    circ(ctx, 0, r * 0.45, r * 0.32);
+    ctx.fill();
+    ctx.stroke();
+    // Needle
+    ctx.strokeStyle = '#FF2A4D';
+    ctx.lineWidth = 1.8;
+    const na = -1.2 + Math.sin(t * 1.5) * 0.4;
+    ctx.beginPath();
+    ctx.moveTo(0, r * 0.45);
+    ctx.lineTo(Math.cos(na) * r * 0.24, r * 0.45 + Math.sin(na) * r * 0.24);
+    ctx.stroke();
+    // Chrome weighing bowl on top
+    ctx.fillStyle = '#D6E2E8';
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.arc(0, -2, r * 0.65, 0, PI);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ell(ctx, 0, -2, r * 0.65, 7);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* ==========================================================================
    * 2. Cozy Sunlit Pinterest Patisserie Scene Backdrop
    * ========================================================================== */
   function drawKitchenBackdrop(ctx, W, H, t) {
@@ -860,6 +1364,37 @@ const KitchenArt = (() => {
     ctx.moveTo(0, counterY + 5);
     ctx.lineTo(W, counterY + 5);
     ctx.stroke();
+
+    // Lower Patisserie Cabinet Drawers below the counter edge (yt_maxresdefault.jpg)
+    const drawerH = 46;
+    ctx.fillStyle = '#FAF7F2';
+    ctx.fillRect(0, counterY + 5, W, drawerH);
+    ctx.strokeStyle = 'rgba(180, 160, 140, 0.4)';
+    ctx.lineWidth = 2;
+    const numDrawers = 6;
+    const dw = W / numDrawers;
+    for (let i = 0; i < numDrawers; i++) {
+      const dx = i * dw;
+      ctx.strokeRect(dx + 6, counterY + 10, dw - 12, drawerH - 12);
+      // Matte black cup drawer handle
+      ctx.fillStyle = '#2A2421';
+      ctx.strokeStyle = OUTLINE;
+      ctx.lineWidth = 1.6;
+      rr(ctx, dx + dw / 2 - 14, counterY + 22, 28, 8, 4);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // Studio Counter Props (flanking the critter who stands at W * 0.46)
+    // Left counter props (yt_hq2.jpg & yt_maxresdefault.jpg):
+    drawWhiteCeramicDaisyPot(ctx, W * 0.06, counterY - 14);
+    drawGlassCupcakeStand(ctx, W * 0.16, counterY - 24, 38, t);
+    drawYellowSunflowerPot(ctx, W * 0.27, counterY - 18, 0.85);
+
+    // Right counter props:
+    drawPastelMiniOven(ctx, W * 0.68, counterY - 36, 114, 78, t);
+    drawMiniKitchenScale(ctx, W * 0.82, counterY - 20, 26, t);
+    drawRainbowArchFigurine(ctx, W * 0.92, counterY - 18, 0.85);
   }
 
   /* ==========================================================================
@@ -1549,8 +2084,90 @@ const KitchenArt = (() => {
         break;
       }
 
+      case 'cocoa': {
+        // Roasted Cocoa Beans & Pod (yt_hq1.jpg)
+        ctx.fillStyle = '#4A2511';
+        ctx.strokeStyle = OUTLINE;
+        ctx.lineWidth = Math.max(1.8, r * 0.08);
+        if (sliced) {
+          // Cocoa beans cracked open into nibs
+          for (const [bx, by, rot] of [[-r * 0.3, -r * 0.05, -0.3], [r * 0.28, r * 0.05, 0.3]]) {
+            ctx.save();
+            ctx.translate(bx, by);
+            ctx.rotate(rot);
+            ell(ctx, 0, 0, r * 0.42, r * 0.28);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = '#784323';
+            ell(ctx, 0, 0, r * 0.32, r * 0.2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ell(ctx, -r * 0.1, -r * 0.08, r * 0.12, r * 0.06, -0.4);
+            ctx.fill();
+            ctx.restore();
+          }
+        } else {
+          // Whole roasted cocoa pod/bean
+          ctx.beginPath();
+          ctx.moveTo(-r * 0.65, 0);
+          ctx.quadraticCurveTo(-r * 0.4, -r * 0.45, 0, -r * 0.48);
+          ctx.quadraticCurveTo(r * 0.48, -r * 0.42, r * 0.72, 0);
+          ctx.quadraticCurveTo(r * 0.48, r * 0.42, 0, r * 0.48);
+          ctx.quadraticCurveTo(-r * 0.4, r * 0.45, -r * 0.65, 0);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          // Longitudinal husk ridges
+          ctx.strokeStyle = '#2A1308';
+          ctx.lineWidth = Math.max(1.2, r * 0.04);
+          for (let k = -1; k <= 1; k++) {
+            ctx.beginPath();
+            ctx.moveTo(-r * 0.58, 0);
+            ctx.quadraticCurveTo(0, k * r * 0.32, r * 0.65, 0);
+            ctx.stroke();
+          }
+          gloss(ctx, -r * 0.2, -r * 0.24, r * 0.25, r * 0.1, -0.2, 0.4);
+        }
+        break;
+      }
+
+      case 'candy_balls': {
+        drawSpecularCandyBall(ctx, 0, 0, r * 0.5, '#FF2A2A');
+        break;
+      }
+
+      case 'rainbow_arch': {
+        drawRainbowArchFigurine(ctx, 0, r * 0.1, r * 0.024);
+        break;
+      }
+
+      case 'flower_pot': {
+        drawYellowSunflowerPot(ctx, 0, r * 0.05, r * 0.025);
+        break;
+      }
+
       case 'choco': {
         ctx.fillStyle = baseCol;
+        if (cooked > 0.15) {
+          // Melts into silky dark chocolate mirror glaze pool (zuCz-X1TrMM)
+          const meltP = Math.min(1, (cooked - 0.15) / 0.7);
+          const pr = r * (0.65 + meltP * 0.45);
+          ctx.fillStyle = '#261108';
+          blob(ctx, 0, 0, pr * 1.1, pr * 0.7, 1.2, 0.15, 12);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#3A1B0E';
+          ell(ctx, -pr * 0.1, -pr * 0.05, pr * 0.75, pr * 0.45, -0.1);
+          ctx.fill();
+          gloss(ctx, -pr * 0.35, -pr * 0.22, pr * 0.3, pr * 0.1, -0.2, 0.45);
+          if (meltP < 0.85) {
+            const rem = (1 - meltP);
+            ctx.fillStyle = '#1A0B05';
+            rr(ctx, -r * 0.25 * rem, -r * 0.2 * rem, r * 0.5 * rem, r * 0.4 * rem, 3);
+            ctx.fill();
+          }
+          break;
+        }
         if (sliced) {
           rr(ctx, -r * 0.5, -r * 0.46, r * 1.0, r * 0.92, r * 0.14);
           ctx.fill();
@@ -1796,22 +2413,54 @@ const KitchenArt = (() => {
     ctx.fill();
     const scoop = opts.scoop === undefined ? (opts.loaded ? 1 : 0) : clamp01(opts.scoop);
     if (scoop > 0.02) {
-      const col = opts.color || '#F4A6B8';
+      const isCake = opts.isCake || opts.cakeStyle || opts.ingId === 'cocoa' || opts.ingId === 'dough' || opts.ingId === 'chocolate';
       ctx.save();
       ctx.scale(scoop, scoop);
-      ctx.fillStyle = col;
-      ctx.strokeStyle = OUTLINE;
-      ctx.lineWidth = Math.max(1.4, r * 0.06);
-      blob(ctx, 0, -r * 0.06, r * 0.42, r * 0.4, 1.7, 0.12, 12);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = lighten(col, 0.4);
-      ell(ctx, -r * 0.12, -r * 0.18, r * 0.14, r * 0.08, -0.5);
-      ctx.fill();
-      if (opts.ingId) {
-        drawIngredient(ctx, opts.ingId, r * 0.06, -r * 0.1, r * 0.3, {
-          sliced: true, cooked: opts.cooked || 0, shadow: false,
-        });
+      if (isCake) {
+        // Miniature 6-layer rainbow cake wedge slice on spoon
+        const rainbowLayers = ['#FF2A2A', '#FF8C1A', '#FFE619', '#1FD141', '#2986FF', '#8C2BFF'];
+        ctx.strokeStyle = OUTLINE;
+        ctx.lineWidth = 1.6;
+        for (let lr = 0; lr < 6; lr++) {
+          ctx.fillStyle = rainbowLayers[lr];
+          const ly = -r * 0.36 + lr * (r * 0.105);
+          rr(ctx, -r * 0.34, ly, r * 0.68, r * 0.095, 1.5);
+          ctx.fill();
+          ctx.fillStyle = '#FFFDF9';
+          ctx.fillRect(-r * 0.32, ly + r * 0.082, r * 0.64, r * 0.02);
+        }
+        // Chocolate mirror glaze roof on top of wedge
+        ctx.fillStyle = '#2A1208';
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 0.56);
+        ctx.lineTo(r * 0.36, -r * 0.34);
+        ctx.lineTo(-r * 0.36, -r * 0.34);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        rr(ctx, -r * 0.36, -r * 0.38, r * 0.72, r * 0.08, 2);
+        ctx.fill();
+        ctx.stroke();
+        // Outer outline around the 6-layer rainbow wedge
+        ctx.strokeRect(-r * 0.34, -r * 0.36, r * 0.68, r * 0.63);
+        // Mini specular candy ball on top
+        drawSpecularCandyBall(ctx, 0, -r * 0.48, r * 0.17, '#FF2A2A');
+      } else {
+        const col = opts.color || '#F4A6B8';
+        ctx.fillStyle = col;
+        ctx.strokeStyle = OUTLINE;
+        ctx.lineWidth = Math.max(1.4, r * 0.06);
+        blob(ctx, 0, -r * 0.06, r * 0.42, r * 0.4, 1.7, 0.12, 12);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = lighten(col, 0.4);
+        ell(ctx, -r * 0.12, -r * 0.18, r * 0.14, r * 0.08, -0.5);
+        ctx.fill();
+        if (opts.ingId) {
+          drawIngredient(ctx, opts.ingId, r * 0.06, -r * 0.1, r * 0.3, {
+            sliced: true, cooked: opts.cooked || 0, shadow: false,
+          });
+        }
       }
       ctx.restore();
     }
@@ -2282,6 +2931,14 @@ const KitchenArt = (() => {
         ctx.quadraticCurveTo(-6, -60, 2, -68);
         ctx.stroke();
       }
+    } else if (tp.id === 'candy_balls') {
+      const rainbow = ['#FF2A2A', '#FF8C1A', '#FFE619', '#1FD141', '#2986FF', '#8C2BFF'];
+      const c = rainbow[(tp.seed || 0) % rainbow.length];
+      drawSpecularCandyBall(ctx, 0, 0, 10, c);
+    } else if (tp.id === 'rainbow_arch') {
+      drawRainbowArchFigurine(ctx, 0, -12, 0.75);
+    } else if (tp.id === 'flower_pot') {
+      drawYellowSunflowerPot(ctx, 0, -6, 0.65);
     } else if (tp.id === 'cherry') {
       ctx.strokeStyle = '#4E8C58';
       ctx.lineWidth = 2.4;
@@ -2360,56 +3017,132 @@ const KitchenArt = (() => {
     const hasPancake = dish.items.some(it => it.id === 'dough') && !dish.bakedCake;
     const cooked = Math.max(0, ...dish.items.map(it => it.cooked || 0));
 
-    if (dish.bakedCake) {
-      const cakeCol = dish.liquidColor || '#F2B46D';
-      const topCol = lerpColor(cakeCol, '#FFF7E4', 0.4);
-      // Bottom tier
-      ctx.fillStyle = lerpColor(cakeCol, '#B8732A', 0.22);
+    const isRosetteCake = dish.cakeStyle === 'rainbow_rosettes' || dish.recipeId === 'ht_rainbow_rosette_cake';
+    const isCandyBallCake = dish.cakeStyle === 'candy_balls' || dish.recipeId === 'ht_rainbow_candy_cake' || dish.bakedCake;
+
+    if (isRosetteCake) {
+      // Style B (yt_hq2.jpg): Two-Tier Rainbow Rosette Cake on Turntable
+      const rotAngle = dish.turntableAngle !== undefined ? dish.turntableAngle : t * 0.35;
+      const bRad = 82, bHeight = 48, bY = -6;
+      ctx.fillStyle = '#FFF5EA';
       ctx.strokeStyle = OUTLINE;
       ctx.lineWidth = 3;
-      rr(ctx, -90, -18, 180, 60, 24);
+      rr(ctx, -bRad, bY, bRad * 2, bHeight, 16);
       ctx.fill();
       ctx.stroke();
-      // Cream layer line
-      ctx.fillStyle = '#FFF9EE';
-      rr(ctx, -90, 4, 180, 10, 5);
-      ctx.fill();
-      ctx.fillStyle = topCol;
-      ell(ctx, 0, -18, 90, 30);
+      ell(ctx, 0, bY, bRad, 28);
       ctx.fill();
       ctx.stroke();
-      // Frosting drips on bottom tier
-      ctx.fillStyle = topCol;
-      for (let k = 0; k < 7; k++) {
-        const dx = -72 + k * 24;
-        const len = 10 + hash(k + 3) * 14;
-        rr(ctx, dx - 6, -10, 12, len, 6);
+      // 6 horizontal rows of buttercream rosettes on bottom tier
+      const rainbow = ['#8C2BFF', '#2986FF', '#1FD141', '#FFE619', '#FF8C1A', '#FF2A2A'];
+      for (let row = 0; row < 6; row++) {
+        const ry = bY + bHeight - 4 - row * 8;
+        const col = rainbow[row];
+        const numRos = 10;
+        for (let b = 0; b < numRos; b++) {
+          const a = (b / numRos) * PI2 + rotAngle;
+          if (Math.sin(a) > -0.2) {
+            const rx0 = Math.cos(a) * (bRad - 2);
+            const ry0 = ry + Math.sin(a) * 6;
+            drawButtercreamRosette(ctx, rx0, ry0, 7.5, col);
+          }
+        }
+      }
+      // Top tier: smaller cylinder radius 52, height 40 (y: -46 to -6)
+      const tRad = 52, tHeight = 40, tY = -46;
+      ctx.save();
+      rr(ctx, -tRad, tY, tRad * 2, tHeight, 10);
+      ctx.clip();
+      for (let row = 0; row < 6; row++) {
+        const sy = tY + tHeight - (row + 1) * (tHeight / 6);
+        ctx.fillStyle = rainbow[row];
+        ctx.fillRect(-tRad - 5, sy, tRad * 2 + 10, tHeight / 6 + 1);
+      }
+      ctx.restore();
+      ctx.strokeStyle = OUTLINE;
+      ctx.lineWidth = 2.5;
+      rr(ctx, -tRad, tY, tRad * 2, tHeight, 10);
+      ctx.stroke();
+      // Top surface of top tier: red buttercream
+      ctx.fillStyle = '#FF2A2A';
+      ell(ctx, 0, tY, tRad, 18);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+      ell(ctx, -tRad * 0.3, tY - 3, tRad * 0.3, 7, -0.3);
+      ctx.fill();
+    } else if (isCandyBallCake) {
+      // Style A (yt_maxresdefault.jpg): Magical Rainbow Candy Ball Cake on Turntable
+      const rotAngle = dish.turntableAngle !== undefined ? dish.turntableAngle : t * 0.35;
+      const cRad = 84, cHeight = 68, cY = -28;
+      // Dark chocolate mirror glaze cylinder
+      const chocGrad = ctx.createLinearGradient(-cRad, 0, cRad, 0);
+      chocGrad.addColorStop(0, '#220D05');
+      chocGrad.addColorStop(0.35, '#3C1B0E');
+      chocGrad.addColorStop(0.7, '#4A2312');
+      chocGrad.addColorStop(1, '#220D05');
+      ctx.fillStyle = chocGrad;
+      ctx.strokeStyle = OUTLINE;
+      ctx.lineWidth = 3.2;
+      rr(ctx, -cRad, cY, cRad * 2, cHeight, 18);
+      ctx.fill();
+      ctx.stroke();
+      // Top mirror glaze surface
+      ctx.fillStyle = '#36180C';
+      ell(ctx, 0, cY, cRad, 32);
+      ctx.fill();
+      ctx.stroke();
+      // Chocolate ganache drip fringes
+      ctx.fillStyle = '#220D05';
+      for (let k = 0; k < 8; k++) {
+        const dx = -cRad + 14 + k * 20;
+        const dlen = 8 + hash(k + 3) * 12;
+        rr(ctx, dx - 4, cY + 4, 8, dlen, 4);
         ctx.fill();
       }
-      // Top tier
-      ctx.fillStyle = cakeCol;
-      rr(ctx, -66, -56, 132, 48, 20);
-      ctx.fill();
+      // Glossy mirror reflection curve
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(0, cY - 2, cRad * 0.8, 22, 0, PI * 1.1, PI * 1.6);
       ctx.stroke();
-      ctx.fillStyle = '#FFF9EE';
-      ell(ctx, 0, -56, 66, 23);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = '#FFF9EE';
-      for (let k = 0; k < 6; k++) {
-        const dx = -55 + k * 22;
-        rr(ctx, dx - 5, -50, 10, 8 + hash(k) * 12, 5);
-        ctx.fill();
+
+      // 6 horizontal rows of 3D specular Rainbow Candy Balls around the cylinder
+      const rainbow = ['#8C2BFF', '#2986FF', '#1FD141', '#FFE619', '#FF8C1A', '#FF2A2A'];
+      for (let row = 0; row < 6; row++) {
+        const ry = cY + cHeight - 6 - row * 11;
+        const col = rainbow[row];
+        const numBalls = 10;
+        for (let b = 0; b < numBalls; b++) {
+          const a = (b / numBalls) * PI2 + rotAngle;
+          if (Math.sin(a) > -0.15) {
+            const bx = Math.cos(a) * (cRad - 1);
+            const by = ry + Math.sin(a) * 7;
+            const rSize = 8.5 * (0.85 + 0.25 * Math.sin(a));
+            drawSpecularCandyBall(ctx, bx, by, rSize, col);
+          }
+        }
       }
-      // Scalloped piped border
-      ctx.fillStyle = '#FFFDF9';
-      ctx.lineWidth = 1.5;
-      for (let k = 0; k < 14; k++) {
-        const a = (k / 14) * PI2;
-        circ(ctx, Math.cos(a) * 64, -56 + Math.sin(a) * 21, 5);
-        ctx.fill();
-        ctx.stroke();
-      }
+
+      // Top surface concentric rings of rainbow candy balls (yt_maxresdefault.jpg)
+      const topRings = [
+        { r: cRad * 0.72, count: 8, col: '#FF2A2A' },
+        { r: cRad * 0.52, count: 6, col: '#FF8C1A' },
+        { r: cRad * 0.34, count: 5, col: '#FFE619' },
+        { r: cRad * 0.18, count: 3, col: '#1FD141' },
+      ];
+      topRings.forEach(rg => {
+        for (let i = 0; i < rg.count; i++) {
+          const a = (i / rg.count) * PI2 + rotAngle;
+          const px = Math.cos(a) * rg.r;
+          const py = cY + Math.sin(a) * (rg.r * 0.38);
+          drawSpecularCandyBall(ctx, px, py, 7.5, rg.col);
+        }
+      });
+      // Center candy ball
+      drawSpecularCandyBall(ctx, 0, cY, 8.5, '#8C2BFF');
+      // Rainbow arch topper standing in center top
+      drawRainbowArchFigurine(ctx, 0, cY - 14, 0.7);
     } else if (hasPancake) {
       for (let layer = 0; layer < 3; layer++) {
         const ly = 16 - layer * 15;
@@ -2525,8 +3258,10 @@ const KitchenArt = (() => {
 
   function drawDishContent(ctx, dish, t, opts) {
     drawDishBase(ctx, dish, t);
+    const isCake = dish.bakedCake || dish.cakeStyle === 'candy_balls' || dish.cakeStyle === 'rainbow_rosettes' || dish.recipeId === 'ht_rainbow_candy_cake' || dish.recipeId === 'ht_rainbow_rosette_cake';
     dish.items.forEach(it => {
       if (it.id === 'dough' || it.id === 'pizzabase') return;
+      if (isCake) return;
       drawIngredient(ctx, it.id, it.x || 0, it.y || 0, it.r || 32, {
         sliced: it.sliced,
         cooked: it.cooked,
@@ -2746,8 +3481,14 @@ const KitchenArt = (() => {
       return;
     }
 
-    // ---------- Plate with 3 portions ----------
-    drawPlate(ctx);
+    // ---------- Plate / Turntable with 3 portions ----------
+    const isHTCake = dish.bakedCake || dish.cakeStyle || dish.recipeId === 'ht_rainbow_candy_cake' || dish.recipeId === 'ht_rainbow_rosette_cake';
+    const rotAngle = dish.turntableAngle !== undefined ? dish.turntableAngle : t * 0.35;
+    if (isHTCake) {
+      drawWhiteCakeTurntable(ctx, 0, 16, 138, 76, rotAngle, t);
+    } else {
+      drawPlate(ctx);
+    }
 
     const removed = PORTION_ORDER.slice(0, bites);
     const remaining = [0, 1, 2].filter(i => removed.indexOf(i) < 0);
@@ -2792,23 +3533,62 @@ const KitchenArt = (() => {
           ctx.restore();
         }
 
-        // Cut faces (cream inner edge) on remaining portion boundaries
+        // Cut faces on remaining portion boundaries (revealing 6-layer rainbow interior for HT cakes!)
         ctx.save();
-        ctx.strokeStyle = 'rgba(255, 248, 236, 0.85)';
-        ctx.lineWidth = 2.5;
-        ctx.lineCap = 'round';
-        remaining.forEach(idx => {
-          if (idx === scooping) return;
-          [idx, (idx + 1) % 3].forEach((edge, e) => {
-            const neighbour = e === 0 ? (idx + 2) % 3 : (idx + 1) % 3;
-            if (remaining.indexOf(neighbour) >= 0 && neighbour !== scooping) return;
-            const a = PORTION_A0 + edge * (PI2 / 3);
-            ctx.beginPath();
-            ctx.moveTo(Math.cos(a) * 6, -2 + Math.sin(a) * 4);
-            ctx.lineTo(Math.cos(a) * 70, -2 + Math.sin(a) * 46);
-            ctx.stroke();
+        if (isHTCake) {
+          const rainbowLayers = ['#8C2BFF', '#2986FF', '#1FD141', '#FFE619', '#FF8C1A', '#FF2A2A'];
+          remaining.forEach(idx => {
+            if (idx === scooping) return;
+            [idx, (idx + 1) % 3].forEach((edge, e) => {
+              const neighbour = e === 0 ? (idx + 2) % 3 : (idx + 1) % 3;
+              if (remaining.indexOf(neighbour) >= 0 && neighbour !== scooping) return;
+              const a = PORTION_A0 + edge * (PI2 / 3);
+              const x0 = Math.cos(a) * 4, y0 = -2 + Math.sin(a) * 2;
+              const x1 = Math.cos(a) * 76, y1 = -2 + Math.sin(a) * 46;
+              // 6 rainbow sponge layer bands
+              for (let lr = 0; lr < 6; lr++) {
+                const col = rainbowLayers[lr];
+                const dy = -16 + lr * 6.5;
+                ctx.strokeStyle = col;
+                ctx.lineWidth = 4.5;
+                ctx.beginPath();
+                ctx.moveTo(x0, y0 + dy);
+                ctx.lineTo(x1, y1 + dy);
+                ctx.stroke();
+                // Thin white buttercream separator line
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.moveTo(x0, y0 + dy + 2.5);
+                ctx.lineTo(x1, y1 + dy + 2.5);
+                ctx.stroke();
+              }
+              // Dark chocolate outer glaze edge
+              ctx.strokeStyle = '#220D05';
+              ctx.lineWidth = 2.4;
+              ctx.beginPath();
+              ctx.moveTo(x1, y1 - 18);
+              ctx.lineTo(x1, y1 + 22);
+              ctx.stroke();
+            });
           });
-        });
+        } else {
+          ctx.strokeStyle = 'rgba(255, 248, 236, 0.85)';
+          ctx.lineWidth = 2.5;
+          ctx.lineCap = 'round';
+          remaining.forEach(idx => {
+            if (idx === scooping) return;
+            [idx, (idx + 1) % 3].forEach((edge, e) => {
+              const neighbour = e === 0 ? (idx + 2) % 3 : (idx + 1) % 3;
+              if (remaining.indexOf(neighbour) >= 0 && neighbour !== scooping) return;
+              const a = PORTION_A0 + edge * (PI2 / 3);
+              ctx.beginPath();
+              ctx.moveTo(Math.cos(a) * 6, -2 + Math.sin(a) * 4);
+              ctx.lineTo(Math.cos(a) * 70, -2 + Math.sin(a) * 46);
+              ctx.stroke();
+            });
+          });
+        }
         ctx.restore();
       }
     }
@@ -2833,31 +3613,33 @@ const KitchenArt = (() => {
   /** Procedural body motion at time tt (pure; evaluated twice for lag). */
   function critterMotion(tt, rig) {
     const { rxn, rI, chew, celebrate, mouthOpen } = rig;
-    let bobY = Math.sin(tt * 2.2) * 2.2;
+    // Calm, rhythmic breathing like real miniature ASMR
+    let bobY = Math.sin(tt * 1.8) * 1.5;
     let shakeX = 0;
-    let sqX = 1 + Math.sin(tt * 2.2) * 0.012;
-    let sqY = 1 - Math.sin(tt * 2.2) * 0.012;
+    let sqX = 1 + Math.sin(tt * 1.8) * 0.01;
+    let sqY = 1 - Math.sin(tt * 1.8) * 0.01;
     const jumpy = Math.max(celebrate, (rxn === 'love' || rxn === 'rainbow') ? rI : 0);
     if (jumpy > 0) {
-      const jump = Math.abs(Math.sin(tt * 6.5));
-      const land = Math.pow(1 - jump, 10);
-      bobY = lerp(bobY, -jump * (16 + celebrate * 10), jumpy);
-      sqX = lerp(sqX, 1 - jump * 0.06 + land * 0.12, jumpy);
-      sqY = lerp(sqY, 1 + jump * 0.08 - land * 0.1, jumpy);
+      // Gentle joyous sway and soft celebratory bob (grounded behind the counter)
+      const sway = Math.sin(tt * 4.2);
+      bobY = lerp(bobY, -Math.abs(sway) * (6 + celebrate * 4), jumpy);
+      shakeX = lerp(shakeX, sway * 2.5, jumpy);
+      sqX = lerp(sqX, 1 + Math.sin(tt * 4.2) * 0.03, jumpy);
+      sqY = lerp(sqY, 1 - Math.sin(tt * 4.2) * 0.03, jumpy);
     }
-    if (rxn === 'float') bobY = lerp(bobY, -30 + Math.sin(tt * 2.5) * 6, rI);
-    else if (rxn === 'ice') shakeX += Math.sin(tt * 44) * 3 * rI;
-    else if (rxn === 'fire') { shakeX += Math.sin(tt * 30) * 2 * rI; bobY -= Math.abs(Math.sin(tt * 12)) * 6 * rI; }
-    else if (rxn === 'sour') shakeX += Math.sin(tt * 18) * 3 * rI;
-    else if (rxn === 'sleepy') bobY += (4 + Math.sin(tt * 1.3) * 2) * rI;
-    else if (rxn === 'burnt') shakeX += Math.sin(tt * 3) * 5 * rI;
+    if (rxn === 'float') bobY = lerp(bobY, -16 + Math.sin(tt * 2.2) * 4, rI);
+    else if (rxn === 'ice') shakeX += Math.sin(tt * 28) * 1.8 * rI;
+    else if (rxn === 'fire') { shakeX += Math.sin(tt * 24) * 1.5 * rI; bobY -= Math.abs(Math.sin(tt * 8)) * 3 * rI; }
+    else if (rxn === 'sour') shakeX += Math.sin(tt * 14) * 2 * rI;
+    else if (rxn === 'sleepy') bobY += (3 + Math.sin(tt * 1.2) * 1.5) * rI;
+    else if (rxn === 'burnt') shakeX += Math.sin(tt * 3) * 3 * rI;
     if (chew > 0) {
-      sqX += Math.sin(tt * 14) * 0.022;
-      sqY -= Math.sin(tt * 14) * 0.022;
+      sqX += Math.sin(tt * 12) * 0.018;
+      sqY -= Math.sin(tt * 12) * 0.018;
     }
     if (mouthOpen > 0) {
-      sqY += mouthOpen * 0.03;
-      sqX -= mouthOpen * 0.02;
+      sqY += mouthOpen * 0.025;
+      sqX -= mouthOpen * 0.015;
     }
     return { bobY, shakeX, sqX, sqY };
   }
@@ -4054,6 +4836,68 @@ const KitchenArt = (() => {
     circ(ctx, cx + 156, cy - 68, 6);
     ctx.fill();
     ctx.stroke();
+
+    // Draw the adorable Mini Panda Porcelain Dish (yt_hq1.jpg) on the left of board
+    const pandaX = cx - 82, pandaY = cy - 22;
+    ctx.save();
+    // Dish contact shadow
+    ctx.fillStyle = 'rgba(92, 61, 46, 0.16)';
+    rr(ctx, pandaX - 44, pandaY - 30, 88, 64, 14);
+    ctx.fill();
+    // Porcelain body
+    ctx.fillStyle = '#FFFFFF';
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 2.8;
+    rr(ctx, pandaX - 42, pandaY - 32, 84, 60, 12);
+    ctx.fill();
+    ctx.stroke();
+    // Delicate pastel green rim stripe (yt_hq1.jpg)
+    ctx.strokeStyle = '#A8D5BA';
+    ctx.lineWidth = 2;
+    rr(ctx, pandaX - 38, pandaY - 28, 76, 52, 9);
+    ctx.stroke();
+    // Hand-painted cute baby panda illustration inside dish
+    ctx.save();
+    ctx.translate(pandaX, pandaY);
+    // Ears
+    ctx.fillStyle = '#2A2421';
+    circ(ctx, -14, -14, 5.5);
+    circ(ctx, 14, -14, 5.5);
+    ctx.fill();
+    // Face
+    ctx.fillStyle = '#FFFFFF';
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 1.6;
+    circ(ctx, 0, -4, 15);
+    ctx.fill();
+    ctx.stroke();
+    // Black eye patches
+    ctx.fillStyle = '#2A2421';
+    ctx.save();
+    ctx.translate(-5.5, -5); ctx.rotate(-0.25);
+    ell(ctx, 0, 0, 4.2, 3.2); ctx.fill();
+    ctx.restore();
+    ctx.save();
+    ctx.translate(5.5, -5); ctx.rotate(0.25);
+    ell(ctx, 0, 0, 4.2, 3.2); ctx.fill();
+    ctx.restore();
+    // White eye catchlights
+    ctx.fillStyle = '#FFFFFF';
+    circ(ctx, -5, -6, 1.2);
+    circ(ctx, 5, -6, 1.2);
+    ctx.fill();
+    // Nose and mouth
+    ctx.fillStyle = '#2A2421';
+    circ(ctx, 0, -1, 1.6);
+    ctx.fill();
+    ctx.strokeStyle = '#2A2421';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, 2.8, 0.2, PI - 0.2);
+    ctx.stroke();
+    ctx.restore();
+    ctx.restore();
+
     ctx.restore();
 
     if (!bi) {
@@ -4199,9 +5043,9 @@ const KitchenArt = (() => {
         if (isNew) {
           const p = sep;
           px = lerp(cutLX + 6, slotX, p);
-          py = -Math.sin(p * PI) * 26;
+          py = 0; // Grounded on the board/dish, zero flying junk!
           rot = lerp(0.6, slotRot, p);
-          sc = 1 + Math.sin(p * PI) * 0.15;
+          sc = 1 + Math.sin(p * PI) * 0.06;
         }
         drawIngredient(ctx, bi.id, px, py, 40, { sliced: true, rot, scaleX: sc, scaleY: sc });
       }
@@ -4521,21 +5365,22 @@ const KitchenArt = (() => {
       return;
     }
 
-    // ---- Speckled sage ceramic bowl (rim ellipse + visible body & foot) ----
+    // ---- Miniature Crystal Glass Mixing Bowl (Translucent & ASMR) ----
     ctx.rotate(tilt);
     softShadow(ctx, 0, 100, 120, 22, 0.22);
-    // Foot ring
-    ctx.fillStyle = '#7FA896';
+
+    // Clear glass foot ring
+    ctx.fillStyle = 'rgba(230, 245, 252, 0.65)';
     ctx.strokeStyle = OUTLINE;
     ctx.lineWidth = 3.5;
     ell(ctx, 0, 106, 58, 12);
     ctx.fill();
     ctx.stroke();
-    // Bowl body below the rim
+    // Glass bowl body below the rim
     const bodyG = ctx.createLinearGradient(-140, 0, 140, 0);
-    bodyG.addColorStop(0, '#86B09F');
-    bodyG.addColorStop(0.35, '#A9D0BF');
-    bodyG.addColorStop(1, '#79A391');
+    bodyG.addColorStop(0, 'rgba(225, 242, 250, 0.7)');
+    bodyG.addColorStop(0.35, 'rgba(245, 252, 255, 0.55)');
+    bodyG.addColorStop(1, 'rgba(215, 238, 248, 0.7)');
     ctx.fillStyle = bodyG;
     ctx.lineWidth = 4;
     ctx.beginPath();
@@ -4545,22 +5390,46 @@ const KitchenArt = (() => {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = 'rgba(92,61,46,0.1)';
-    for (let k = 0; k < 10; k++) {
-      circ(ctx, (hash(k + 20) - 0.5) * 220, 86 + (hash(k + 30) - 0.5) * 18, 1.6 + hash(k) * 1.2);
-      ctx.fill();
-    }
+    // Glass reflections
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(-110, 20);
+    ctx.quadraticCurveTo(-90, 75, -40, 95);
+    ctx.stroke();
     // Rim
     const bowlG = ctx.createLinearGradient(-140, -40, 140, 60);
-    bowlG.addColorStop(0, '#B5D8C8');
-    bowlG.addColorStop(0.5, '#9CC5B5');
-    bowlG.addColorStop(1, '#86B09F');
+    bowlG.addColorStop(0, 'rgba(240, 250, 255, 0.9)');
+    bowlG.addColorStop(0.5, 'rgba(220, 240, 250, 0.8)');
+    bowlG.addColorStop(1, 'rgba(200, 230, 245, 0.9)');
     ctx.fillStyle = bowlG;
     ctx.strokeStyle = OUTLINE;
     ctx.lineWidth = 4;
     ell(ctx, 0, 0, 140, 84);
     ctx.fill();
     ctx.stroke();
+
+    // 6 Miniature Rainbow Batter Bowls flanking the mixing bowl on counter (yt_hq2.jpg)
+    const rainbowColors = ['#FF2A2A', '#FF8C1A', '#FFE619', '#1FD141', '#2986FF', '#8C2BFF'];
+    rainbowColors.forEach((rc, rIdx) => {
+      const rx0 = rIdx < 3 ? -188 + rIdx * 28 : 118 + (rIdx - 3) * 27;
+      const ry0 = 16;
+      ctx.save();
+      softShadow(ctx, rx0, ry0 + 5, 17, 6, 0.16);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.strokeStyle = OUTLINE;
+      ctx.lineWidth = 1.8;
+      ell(ctx, rx0, ry0, 18, 10);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = rc;
+      ell(ctx, rx0, ry0 - 2, 14, 7);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      circ(ctx, rx0 - 4, ry0 - 4, 2.5);
+      ctx.fill();
+      ctx.restore();
+    });
     ctx.fillStyle = 'rgba(92,61,46,0.12)';
     for (let k = 0; k < 14; k++) {
       const a = (k / 14) * PI2;
@@ -4626,17 +5495,6 @@ const KitchenArt = (() => {
     ctx.fill();
     ctx.restore();
 
-    // Flying batter droplets when stirring fast
-    if (velN > 0.15) {
-      for (let k = 0; k < 7; k++) {
-        const phd = (t * 1.6 + hash(k)) % 1;
-        const a = hash(k + 4) * PI2 + swirl * 0.3;
-        const r0 = 112, h = 40 + hash(k + 9) * 40;
-        const px = Math.cos(a) * (r0 + phd * 30);
-        const py = Math.sin(a) * 66 - Math.sin(phd * PI) * h + phd * 30;
-        drawParticle(ctx, { x: px, y: py, r: 3 + hash(k + 2) * 2, kind: 'droplet', color: rgba(mixColor, (1 - phd) * velN) }, t);
-      }
-    }
     // Glossy rim highlight
     ctx.strokeStyle = 'rgba(255,255,255,0.7)';
     ctx.lineWidth = 3;
@@ -4686,9 +5544,7 @@ const KitchenArt = (() => {
 
   function drawCookStation(ctx, cx, cy, s, t) {
     s = s || {};
-    const mode = s.cookMode || 'pan';
     const heat = clamp(s.heatLevel || 2, 1, 3);
-    const items = s.panItems || [];
     const cook = s.cookProgress || 0;
     const burnt = cook > 1.08;
     const spring = s.boardSpring || { sx: 1, sy: 1 };
@@ -4697,361 +5553,245 @@ const KitchenArt = (() => {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    if (mode === 'oven') {
-      const warm = clamp01(cook / 0.85);
-      softShadow(ctx, cx, cy + 86, 150, 18, 0.22);
-      ctx.fillStyle = '#F4D5B8';
-      ctx.strokeStyle = OUTLINE;
-      ctx.lineWidth = 4;
-      rr(ctx, cx - 150, cy - 96, 300, 176, 26);
+    // 1. Oven in the background
+    const ovenCx = cx;
+    const ovenCy = cy - 60;
+    const warm = clamp01(cook / 0.85);
+    
+    // Draw oven (Signature Pastel Mint-Green HT Mini Oven casing)
+    softShadow(ctx, ovenCx, ovenCy + 86, 150, 18, 0.22);
+    ctx.fillStyle = '#8ED6B8';
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 4;
+    rr(ctx, ovenCx - 150, ovenCy - 96, 300, 176, 26);
+    ctx.fill();
+    ctx.stroke();
+    // Knobs
+    for (let k = -1; k <= 1; k++) {
+      ctx.fillStyle = '#E8998D';
+      circ(ctx, ovenCx + k * 40, ovenCy - 78, 8);
       ctx.fill();
       ctx.stroke();
-      // Knobs
-      for (let k = -1; k <= 1; k++) {
-        ctx.fillStyle = '#E8998D';
-        circ(ctx, cx + k * 40, cy - 78, 8);
-        ctx.fill();
-        ctx.stroke();
-        ctx.strokeStyle = OUTLINE;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(cx + k * 40, cy - 78);
-        ctx.lineTo(cx + k * 40 + Math.cos(-1 + k + heat * 0.4) * 6, cy - 78 + Math.sin(-1 + k + heat * 0.4) * 6);
-        ctx.stroke();
-        ctx.lineWidth = 4;
-      }
-      // Window with warm interior glow
-      ctx.save();
-      rr(ctx, cx - 118, cy - 58, 236, 114, 18);
-      ctx.clip();
-      const og = ctx.createRadialGradient(cx, cy + 30, 10, cx, cy, 140);
-      og.addColorStop(0, lerpColor('#FFE8A3', '#FFB347', warm * 0.8));
-      og.addColorStop(1, lerpColor('#F7D98A', '#E68A2E', warm * 0.6));
-      ctx.fillStyle = og;
-      ctx.fillRect(cx - 120, cy - 60, 240, 120);
-      // Heating coil
-      ctx.strokeStyle = `rgba(255, ${Math.round(120 - warm * 60)}, 60, ${(0.5 + 0.5 * Math.abs(Math.sin(t * 3))).toFixed(3)})`;
-      ctx.lineWidth = 5;
+      ctx.strokeStyle = OUTLINE;
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(cx - 90, cy + 44);
+      ctx.moveTo(ovenCx + k * 40, ovenCy - 78);
+      ctx.lineTo(ovenCx + k * 40 + Math.cos(-1 + k + heat * 0.4) * 6, ovenCy - 78 + Math.sin(-1 + k + heat * 0.4) * 6);
+      ctx.stroke();
+      ctx.lineWidth = 4;
+    }
+    // Window with warm interior glow
+    ctx.save();
+    rr(ctx, ovenCx - 118, ovenCy - 58, 236, 114, 18);
+    ctx.clip();
+    const og = ctx.createRadialGradient(ovenCx, ovenCy + 30, 10, ovenCx, ovenCy, 140);
+    og.addColorStop(0, lerpColor('#FFE8A3', '#FFB347', warm * 0.8));
+    og.addColorStop(1, lerpColor('#F7D98A', '#E68A2E', warm * 0.6));
+    ctx.fillStyle = og;
+    ctx.fillRect(ovenCx - 120, ovenCy - 60, 240, 120);
+    // Heating coil
+    ctx.strokeStyle = `rgba(255, ${Math.round(120 - warm * 60)}, 60, ${(0.5 + 0.5 * Math.abs(Math.sin(t * 3))).toFixed(3)})`;
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(ovenCx - 90, ovenCy + 44);
+    for (let k = 0; k < 6; k++) {
+      ctx.quadraticCurveTo(ovenCx - 75 + k * 30, ovenCy + 34, ovenCx - 60 + k * 30, ovenCy + 44);
+    }
+    ctx.stroke();
+    // Rack
+    ctx.strokeStyle = 'rgba(92,61,46,0.55)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(ovenCx - 100, ovenCy + 24);
+    ctx.lineTo(ovenCx + 100, ovenCy + 24);
+    ctx.stroke();
+    for (let k = -3; k <= 3; k++) {
+      ctx.beginPath();
+      ctx.moveTo(ovenCx + k * 28, ovenCy + 24);
+      ctx.lineTo(ovenCx + k * 28, ovenCy + 32);
+      ctx.stroke();
+    }
+    // Rising cake on a tray
+    const pulse = s.ovenPulse || 0;
+    const rise = (0.6 + warm * 0.5) * (1 + pulse * 0.1);
+    ctx.save();
+    ctx.translate(ovenCx, ovenCy + 22);
+    ctx.scale((spring.sx || 1) * (1 + pulse * 0.08), (spring.sy || 1) * rise);
+    const tint = s.batterTint || '#FFF3C4';
+    const cakeCol = lerpColor(tint, '#E69849', Math.min(0.7, cook / 0.85));
+    ctx.fillStyle = '#B8C5CE';
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 2.5;
+    rr(ctx, -84, -6, 168, 10, 4);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = darken(cakeCol, 0.12);
+    ctx.lineWidth = 3;
+    rr(ctx, -72, -40, 144, 36, 16);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = cakeCol;
+    ctx.beginPath();
+    ctx.moveTo(-72, -40);
+    ctx.bezierCurveTo(-60, -70 - warm * 12, 60, -70 - warm * 12, 72, -40);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = lighten(cakeCol, 0.35);
+    ell(ctx, -16, -52 - warm * 6, 22, 7, -0.1);
+    ctx.fill();
+    if (warm > 0.5) {
+      ctx.fillStyle = `rgba(190, 120, 50, ${((warm - 0.5) * 1.2).toFixed(3)})`;
       for (let k = 0; k < 6; k++) {
-        ctx.quadraticCurveTo(cx - 75 + k * 30, cy + 34, cx - 60 + k * 30, cy + 44);
+        circ(ctx, (hash(k) - 0.5) * 120, -48 + hash(k + 4) * 10, 3 + hash(k + 8) * 3);
+        ctx.fill();
       }
-      ctx.stroke();
-      // Rack
-      ctx.strokeStyle = 'rgba(92,61,46,0.55)';
+    }
+    ctx.restore();
+    // Steam inside
+    if (warm > 0.3) {
+      ctx.strokeStyle = `rgba(255,253,249,${(0.5 * warm).toFixed(3)})`;
       ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(cx - 100, cy + 24);
-      ctx.lineTo(cx + 100, cy + 24);
-      ctx.stroke();
-      for (let k = -3; k <= 3; k++) {
+      for (let k = -1; k <= 1; k++) {
+        const sx = ovenCx + k * 34;
+        const wv = Math.sin(t * 3 + k) * 6;
         ctx.beginPath();
-        ctx.moveTo(cx + k * 28, cy + 24);
-        ctx.lineTo(cx + k * 28, cy + 32);
+        ctx.moveTo(sx, ovenCy - 20);
+        ctx.quadraticCurveTo(sx + wv, ovenCy - 36, sx - wv, ovenCy - 52);
         ctx.stroke();
       }
-      // Rising cake on a tray (ovenPulse = spring kick when the oven dings)
-      const pulse = s.ovenPulse || 0;
-      const rise = (0.6 + warm * 0.5) * (1 + pulse * 0.1);
-      ctx.save();
-      ctx.translate(cx, cy + 22);
-      ctx.scale((spring.sx || 1) * (1 + pulse * 0.08), (spring.sy || 1) * rise);
-      const tint = s.batterTint || '#FFF3C4';
-      const cakeCol = lerpColor(tint, '#E69849', Math.min(0.7, cook / 0.85));
-      ctx.fillStyle = '#B8C5CE';
-      ctx.strokeStyle = OUTLINE;
-      ctx.lineWidth = 2.5;
-      rr(ctx, -84, -6, 168, 10, 4);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = darken(cakeCol, 0.12);
-      ctx.lineWidth = 3;
-      rr(ctx, -72, -40, 144, 36, 16);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = cakeCol;
-      ctx.beginPath();
-      ctx.moveTo(-72, -40);
-      ctx.bezierCurveTo(-60, -70 - warm * 12, 60, -70 - warm * 12, 72, -40);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = lighten(cakeCol, 0.35);
-      ell(ctx, -16, -52 - warm * 6, 22, 7, -0.1);
-      ctx.fill();
-      if (warm > 0.5) {
-        ctx.fillStyle = `rgba(190, 120, 50, ${((warm - 0.5) * 1.2).toFixed(3)})`;
-        for (let k = 0; k < 6; k++) {
-          circ(ctx, (hash(k) - 0.5) * 120, -48 + hash(k + 4) * 10, 3 + hash(k + 8) * 3);
-          ctx.fill();
-        }
-      }
-      ctx.restore();
-      // Steam inside
-      if (warm > 0.3) {
-        ctx.strokeStyle = `rgba(255,253,249,${(0.5 * warm).toFixed(3)})`;
-        ctx.lineWidth = 3;
-        for (let k = -1; k <= 1; k++) {
-          const sx = cx + k * 34;
-          const wv = Math.sin(t * 3 + k) * 6;
-          ctx.beginPath();
-          ctx.moveTo(sx, cy - 20);
-          ctx.quadraticCurveTo(sx + wv, cy - 36, sx - wv, cy - 52);
-          ctx.stroke();
-        }
-      }
-      ctx.restore();
-      // Glass frame + reflection
-      ctx.strokeStyle = OUTLINE;
-      ctx.lineWidth = 4;
-      rr(ctx, cx - 118, cy - 58, 236, 114, 18);
-      ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.moveTo(cx - 96, cy + 40);
-      ctx.lineTo(cx - 40, cy - 48);
-      ctx.stroke();
-      // Door handle
-      ctx.fillStyle = '#C9D4DC';
-      ctx.strokeStyle = OUTLINE;
-      ctx.lineWidth = 3;
-      rr(ctx, cx - 100, cy + 62, 200, 10, 5);
-      ctx.fill();
-      ctx.stroke();
-      // Ding sparkles when ready
-      if (cook >= 0.6 && !burnt) {
-        ctx.fillStyle = '#F7C948';
-        for (let k = 0; k < 4; k++) {
-          const a = t * 2 + k * 1.6;
-          sparkle4(ctx, cx + 120 + Math.cos(a) * 18, cy - 90 + Math.sin(a) * 10, 7 + Math.sin(t * 5 + k) * 2, t * 2);
-          ctx.fill();
-        }
-      }
-      ctx.restore();
-      return;
     }
+    ctx.restore();
+    // Glass frame + reflection
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 4;
+    rr(ctx, ovenCx - 118, ovenCy - 58, 236, 114, 18);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(ovenCx - 96, ovenCy + 40);
+    ctx.lineTo(ovenCx - 40, ovenCy - 48);
+    ctx.stroke();
+    // Door handle
+    ctx.fillStyle = '#C9D4DC';
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 3;
+    rr(ctx, ovenCx - 100, ovenCy + 62, 200, 10, 5);
+    ctx.fill();
+    ctx.stroke();
 
-    // ---- Pan toss state ----
-    let pt = normAnim(s.panToss);
-    if (!s.panToss && s.flipAnim > 0) pt = { active: true, t: 1 - clamp01(s.flipAnim) };
-    let panDy = 0, panTilt = 0;
-    if (pt.active) {
-      if (pt.panDy !== undefined) {
-        panDy = pt.panDy; panTilt = pt.panTilt || 0;
-      } else {
-        const tt = pt.t;
-        if (tt < 0.2) { const p = smooth(tt / 0.2); panDy = 10 * p; panTilt = 0.08 * p; }
-        else if (tt < 0.32) { const p = easeOutCubic((tt - 0.2) / 0.12); panDy = lerp(10, -18, p); panTilt = lerp(0.08, -0.24, p); }
-        else { const u = tt - 0.32; const d = Math.exp(-5 * u); panDy = -18 * d * Math.cos(13 * u); panTilt = -0.24 * d * Math.cos(11 * u); }
-      }
-    }
+    // 2. Miniature Saucepan for Glaze in the foreground
+    const panCx = cx;
+    const panCy = cy + 40;
 
-    // Burner: cast-iron trivet ring peeking around the skillet + gas petals
-    // licking up around the bottom rim (the pan covers their roots)
+    // Burner & Flame under the saucepan
     const flameOuter = ['#7BC4E8', '#F5A623', '#E85D4A'][heat - 1];
     const flameInner = ['#DFF4FF', '#FFE08A', '#FFC25A'][heat - 1];
     ctx.strokeStyle = '#6B625C';
     ctx.lineWidth = 9;
-    ell(ctx, cx, cy + 6, 150, 94);
+    ell(ctx, panCx, panCy + 6, 110, 60);
     ctx.stroke();
-    ctx.strokeStyle = '#8C837D';
-    ctx.lineWidth = 3;
-    ell(ctx, cx, cy + 6, 150, 94);
-    ctx.stroke();
-    for (let k = 0; k < 9; k++) {
-      const a = PI * 0.16 + (k / 8) * PI * 0.68; // bottom arc of the rim
-      const fx = cx + Math.cos(a) * 128;
-      const fy = cy + 4 + Math.sin(a) * 78;
-      const flick = Math.sin(t * 16 + k * 1.7) * 3;
-      const h = (30 + heat * 8) * (0.82 + 0.18 * Math.sin(t * 11 + k * 1.3)) * (0.75 + 0.25 * Math.sin(a));
-      ctx.save();
-      ctx.translate(fx, fy);
-      ctx.rotate(a + PI / 2); // petal points outward from under the rim
-      drawFlamePetal(ctx, 0, 0, h, 11 + heat, flameOuter, flameInner, flick);
-      ctx.restore();
+    for (let k = 0; k < 12; k++) {
+      const a = (k / 12) * Math.PI * 2;
+      const f1 = Math.sin(t * 8 + k * 1.5) * 6;
+      drawFlamePetal(ctx, panCx + Math.cos(a) * 96, panCy + 6 + Math.sin(a) * 52, 24 + f1, 14, flameOuter, flameInner, Math.sin(t * 20 + k) * 0.1);
     }
-    // Heat glow haze
-    ctx.fillStyle = `rgba(255, 170, 80, ${(0.07 * heat).toFixed(3)})`;
-    ell(ctx, cx, cy + 40, 170, 60);
-    ctx.fill();
-
-    // ---- Skillet (pivot at the handle grip for the toss) ----
-    const pivX = cx + 190, pivY = cy;
+    // Saucepan base and shadow
+    softShadow(ctx, panCx, panCy + 10, 100, 14, 0.4);
+    
+    // Pot handle
     ctx.save();
-    ctx.translate(pivX, pivY + panDy);
-    ctx.rotate(panTilt);
-    ctx.translate(-pivX, -pivY);
-    ctx.translate(cx, cy);
-    ctx.scale(spring.sx || 1, spring.sy || 1);
-
-    softShadow(ctx, 6, 18 - panDy * 0.5, 150, 90, 0.18);
-    // Walnut handle with brass ring
-    ctx.fillStyle = '#8C5A3C';
+    ctx.translate(panCx + 90, panCy - 20);
+    ctx.rotate(0.2);
+    ctx.fillStyle = '#E8998D';
+    rr(ctx, 0, -8, 80, 16, 8);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+    
+    // Pot body
+    ctx.fillStyle = '#2A2A2A';
     ctx.strokeStyle = OUTLINE;
     ctx.lineWidth = 4;
-    rr(ctx, 112, -14, 108, 28, 14);
-    ctx.fill();
-    ctx.stroke();
-    const hgd = ctx.createLinearGradient(0, -14, 0, 14);
-    hgd.addColorStop(0, '#C98A5E');
-    hgd.addColorStop(1, '#8C5A3C');
-    ctx.fillStyle = hgd;
-    rr(ctx, 118, -10, 96, 20, 10);
-    ctx.fill();
-    ctx.strokeStyle = '#F5D076';
-    ctx.lineWidth = 3;
-    circ(ctx, 206, 0, 6);
-    ctx.stroke();
-    ctx.fillStyle = '#F5D076';
-    circ(ctx, 126, 0, 3.5);
-    ctx.fill();
-    // Copper body
-    const cg = ctx.createLinearGradient(-140, -80, 140, 80);
-    cg.addColorStop(0, '#F2B48A');
-    cg.addColorStop(0.45, '#D9825B');
-    cg.addColorStop(1, '#A8552F');
-    ctx.fillStyle = cg;
-    ctx.strokeStyle = OUTLINE;
-    ctx.lineWidth = 4;
-    ell(ctx, 0, 0, 140, 86);
-    ctx.fill();
-    ctx.stroke();
-    // Dark interior with radial shade + oil sheen
-    const ig = ctx.createRadialGradient(-30, -20, 10, 0, 0, 125);
-    ig.addColorStop(0, '#5A504A');
-    ig.addColorStop(1, '#3A322E');
-    ctx.fillStyle = ig;
-    ell(ctx, 0, 0, 122, 72);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255, 240, 200, 0.1)';
-    ell(ctx, -36, -22, 60, 26, -0.4);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.ellipse(0, 0, 131, 79, 0, PI * 1.12, PI * 1.55);
+    ctx.moveTo(panCx - 96, panCy - 20);
+    ctx.lineTo(panCx - 86, panCy + 8);
+    ctx.quadraticCurveTo(panCx, panCy + 18, panCx + 86, panCy + 8);
+    ctx.lineTo(panCx + 96, panCy - 20);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    
+    // Pot rim
+    ctx.fillStyle = '#3A3A3A';
+    ell(ctx, panCx, panCy - 20, 96, 50);
+    ctx.fill();
     ctx.stroke();
 
-    // Butter foam rings & bubbles (interior)
-    ctx.save();
-    ell(ctx, 0, 0, 120, 70);
-    ctx.clip();
-    const butterRate = 0.6 + heat * 0.5;
-    for (let k = 0; k < 14; k++) {
-      const phb = (t * butterRate + hash(k)) % 1;
-      const bx = (hash(k + 3) - 0.5) * 220, by = (hash(k + 7) - 0.5) * 120;
-      const rad = 3 + phb * 9;
-      ctx.strokeStyle = `rgba(255, 250, 230, ${(0.75 * (1 - phb)).toFixed(3)})`;
-      ctx.lineWidth = 2;
-      circ(ctx, bx, by, rad);
-      ctx.stroke();
-      if (k % 3 === 0) {
-        ctx.fillStyle = `rgba(255, 236, 170, ${(0.5 * (1 - phb)).toFixed(3)})`;
-        circ(ctx, bx, by, rad * 0.4);
+    // Dark Chocolate Mirror Glaze pool
+    const poolG = ctx.createRadialGradient(panCx, panCy - 20, 10, panCx, panCy - 20, 90);
+    poolG.addColorStop(0, '#5C3A21'); // rich chocolate
+    poolG.addColorStop(1, '#311D10'); // dark edge
+    ctx.fillStyle = poolG;
+    ell(ctx, panCx, panCy - 18, 88, 44);
+    ctx.fill();
+    ctx.stroke();
+
+    // Glossy catchlights on the mirror glaze
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ell(ctx, panCx - 40, panCy - 30, 20, 6, 0.2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ell(ctx, panCx + 40, panCy - 10, 15, 4, -0.2);
+    ctx.fill();
+
+    // Gentle simmer bubbles (no airborne panToss)
+    if (cook > 0.2) {
+      const simmerA = clamp01(cook * 2);
+      ctx.fillStyle = `rgba(120, 70, 40, ${simmerA.toFixed(3)})`;
+      for (let k = 0; k < 6; k++) {
+        const phb = (t * 2 + hash(k)) % 1;
+        const bx = panCx + (hash(k + 3) - 0.5) * 140;
+        const by = panCy - 20 + (hash(k + 7) - 0.5) * 60;
+        const rad = 2 + phb * 6;
+        if (Math.hypot((bx - panCx) / 88, (by - (panCy - 20)) / 44) < 0.9) {
+          ctx.strokeStyle = `rgba(160, 100, 60, ${(0.8 * (1 - phb)).toFixed(3)})`;
+          ctx.lineWidth = 2;
+          circ(ctx, bx, by, rad);
+          ctx.stroke();
+          ctx.fill();
+        }
+      }
+      
+      // Steam
+      const steamA = simmerA * 0.5;
+      for (let k = -1; k <= 1; k++) {
+        const sx = panCx + k * 30;
+        const ph = (t * 0.5 + k * 0.3 + 1) % 1;
+        const wave = Math.sin(t * 3 + k) * 6;
+        ctx.strokeStyle = `rgba(255, 253, 249, ${(steamA * (1 - ph)).toFixed(3)})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(sx, panCy - 30 - ph * 15);
+        ctx.quadraticCurveTo(sx + wave, panCy - 45 - ph * 20, sx - wave, panCy - 60 - ph * 25);
+        ctx.stroke();
+      }
+    }
+
+    // Done sparkles
+    if (cook >= 0.8 && !burnt) {
+      ctx.fillStyle = '#F7C948';
+      for (let k = 0; k < 4; k++) {
+        const a = t * 2 + k * 1.6;
+        sparkle4(ctx, ovenCx + 120 + Math.cos(a) * 18, ovenCy - 90 + Math.sin(a) * 10, 7 + Math.sin(t * 5 + k) * 2, t * 2);
         ctx.fill();
       }
     }
-    // Melting golden butter pat with glossy pool
-    ctx.fillStyle = 'rgba(255, 214, 110, 0.32)';
-    blob(ctx, 34, 18, 34, 16, 1.1 + Math.sin(t * 0.5) * 0.1, 0.18, 12);
-    ctx.fill();
-    ctx.fillStyle = '#FFE48A';
-    ctx.strokeStyle = 'rgba(92,61,46,0.55)';
-    ctx.lineWidth = 1.5;
-    const melt = clamp01(cook * 1.5);
-    rr(ctx, 26, 8, 18 * (1 + melt * 0.3), 12 * (1 - melt * 0.5), 3);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    rr(ctx, 29, 10, 7, 3, 1.5);
-    ctx.fill();
-    ctx.restore();
 
-    // ---- Food bodies (parabolic staggered toss with spin & drop shadows) ----
-    const bodyFor = (idx, isBase) => {
-      const given = pt.active ? (isBase ? pt.baseBody : (pt.bodies && pt.bodies[idx])) : null;
-      if (given) {
-        const dy = given.dy || 0;
-        return {
-          dx: given.dx || 0, dy, rot: given.rot || 0, flip: given.flip || 0,
-          sx: given.sx || 1, sy: given.sy || 1, sh: 1 - clamp01(-dy / 150),
-        };
-      }
-      if (!pt.active) return { dx: 0, dy: 0, rot: 0, flip: 0, sx: 1, sy: 1, sh: 1 };
-      const tl = 0.2 + (isBase ? 0 : idx * 0.045);
-      const tt = seg(pt.t, tl, tl + 0.62);
-      const arc = Math.sin(tt * PI);
-      const h = (pt.height || 110) * (isBase ? 1.05 : 0.85 + hash(idx) * 0.3);
-      const landSquash = tt >= 1 ? Math.max(0, 1 - seg(pt.t, tl + 0.62, tl + 0.78)) : 0;
-      return {
-        dx: (isBase ? 0 : (hash(idx + 2) - 0.5) * 20) * arc,
-        dy: -h * arc,
-        rot: isBase ? 0 : tt * PI2 * (pt.spin || 1),
-        flip: isBase ? tt : 0,
-        sx: 1 + arc * 0.18 + landSquash * 0.2,
-        sy: 1 + arc * 0.18 - landSquash * 0.25,
-        sh: 1 - arc,
-      };
-    };
-    const sizzle = (k) => pt.active ? 0 : Math.sin(t * 28 + k * 2.1) * 0.8 * heat * clamp01(cook * 2);
-    const hasBase = items.some(p => p.id === 'dough' || p.id === 'pizzabase');
-    const baseId = (items.find(p => p.id === 'pizzabase') || {}).id || 'dough';
-    // Shadows first (on the pan surface)
-    const drawShadow = (x, y, r, sh) => {
-      ctx.fillStyle = `rgba(0,0,0,${(0.28 * sh).toFixed(3)})`;
-      ell(ctx, x, y + 6, r * (0.6 + 0.4 * sh), r * 0.35 * (0.6 + 0.4 * sh));
-      ctx.fill();
-    };
-    if (hasBase) {
-      const b = bodyFor(0, true);
-      drawShadow(b.dx, 0, 68, b.sh);
-    }
-    items.forEach((p, i) => {
-      if (p.id === 'dough' || p.id === 'pizzabase') return;
-      const b = bodyFor(i, false);
-      drawShadow(p.x + b.dx, p.y, 34, b.sh);
-    });
-    // Base (pancake / pizza) with flip: cos(flip*2π) scaleY shows the browned side
-    if (hasBase) {
-      const b = bodyFor(0, true);
-      const flipS = Math.cos(b.flip * PI2);
-      ctx.save();
-      ctx.translate(b.dx, b.dy);
-      ctx.scale(b.sx, b.sy * Math.max(0.12, Math.abs(flipS)));
-      drawIngredient(ctx, baseId, 0, 0, 70, { cooked: flipS < 0 ? Math.min(cook + 0.25, 1.3) : cook, shadow: false });
-      ctx.restore();
-    }
-    items.forEach((p, i) => {
-      if (p.id === 'dough' || p.id === 'pizzabase') return;
-      const b = bodyFor(i, false);
-      const jig = sizzle(i);
-      const pop = p.scale === undefined ? 1 : clamp01(p.scale);
-      if (pop < 0.03) return;
-      drawIngredient(ctx, p.id, p.x + b.dx + jig, p.y + b.dy + jig * 0.5, 36, {
-        sliced: p.sliced, cracked: p.cracked, cooked: cook, rot: b.rot, scaleX: b.sx * pop, scaleY: b.sy * pop, shadow: false,
-      });
-    });
+    // Spatula resting on the saucepan rim (no lifting)
+    drawSpatula(ctx, panCx - 60, panCy - 40, 24, -0.4 + Math.sin(t * 2) * 0.02);
 
-    // Spatula resting on the rim, lifting with the toss
-    const spLift = pt.active ? bump(pt.t) * 18 : 0;
-    drawSpatula(ctx, -96, -40 - spLift, 30, -0.55 - (pt.active ? bump(pt.t) * 0.3 : 0) + Math.sin(t * 2) * 0.02);
-    ctx.restore(); // skillet
-
-    // Steam ribbons / smoke rising above the pan
-    const steamA = clamp01(cook * 2) * (burnt ? 0.4 : 0.6);
-    for (let k = -1; k <= 1; k++) {
-      const sx = cx + k * 46;
-      const ph = (t * 0.5 + k * 0.3 + 1) % 1;
-      const wave = Math.sin(t * 3 + k) * 8;
-      ctx.strokeStyle = burnt ? `rgba(110, 100, 95, ${(0.6 * (1 - ph)).toFixed(3)})` : `rgba(255, 253, 249, ${(steamA * (1 - ph)).toFixed(3)})`;
-      ctx.lineWidth = burnt ? 6 : 3;
-      ctx.beginPath();
-      ctx.moveTo(sx, cy - 30 - ph * 20);
-      ctx.quadraticCurveTo(sx + wave, cy - 60 - ph * 30, sx - wave, cy - 92 - ph * 40);
-      ctx.stroke();
-    }
     ctx.restore();
   }
 
@@ -5069,25 +5809,20 @@ const KitchenArt = (() => {
     ctx.save();
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    // Scalloped patisserie cake stand under the plate
-    const footY = cy + 118 * dishScale;
-    softShadow(ctx, cx, footY + 6, 80, 12, 0.18);
-    ctx.fillStyle = '#FFFDF9';
-    ctx.strokeStyle = OUTLINE;
-    ctx.lineWidth = 3;
-    rr(ctx, cx - 14, cy + 94 * dishScale, 28, 26, 8);
-    ctx.fill();
-    ctx.stroke();
-    ell(ctx, cx, footY, 72, 12);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = '#F2C6B8';
-    for (let k = 0; k < 16; k++) {
-      const a = (k / 16) * PI2;
-      circ(ctx, cx + Math.cos(a) * 66, footY + Math.sin(a) * 9, 3);
-      ctx.fill();
+    // Signature White Cake Turntable with Sunflower Pot (left) and Rainbow Arch (right) (yt_maxresdefault.jpg)
+    const turntableAngle = s.turntableAngle !== undefined ? s.turntableAngle : ((dish && dish.turntableAngle !== undefined) ? dish.turntableAngle : t * 0.35);
+    if (!dish) {
+      drawWhiteCakeTurntable(ctx, cx, cy + 54, 144, 76, turntableAngle, t);
     }
-    if (dish) drawDish(ctx, dish, cx, cy, dishScale, t, { toppingSprings: s.toppingSprings });
+
+    // Cute studio figurines on counter table
+    drawYellowSunflowerPot(ctx, cx - 192, cy + 62, 0.88);
+    drawRainbowArchFigurine(ctx, cx + 192, cy + 62, 0.88);
+
+    if (dish) {
+      const dishWithAngle = Object.assign({}, dish, { turntableAngle });
+      drawDish(ctx, dishWithAngle, cx, cy, dishScale, t, { toppingSprings: s.toppingSprings });
+    }
 
     // Tool follows the pointer when near the dish; otherwise rests to the side
     let tx = cx + 196, ty = cy - 24 + Math.sin(t * 2.5) * 4;
@@ -5100,7 +5835,9 @@ const KitchenArt = (() => {
     const tilt = s.toolTilt || 0;
     if (tool === 'piping') {
       if (pa.active && pa.x !== undefined) { tx = pa.x; ty = pa.y; }
-      drawPipingBag(ctx, tx + 4, ty - 6, 38, sq, pa.color || toolColor, { angle: (near ? 0.42 : 0.3) + shake + tilt });
+      // Slanted piping bag with silver metal cone tip approaching from right (yt_hq2.jpg)
+      const bagAngle = -0.72 + shake * 0.4 + tilt * 0.3;
+      drawPipingBag(ctx, tx + 20, ty - 24, 42, sq, pa.color || toolColor, { angle: bagAngle });
     } else if (tool === 'sauce') {
       drawSauceBottle(ctx, tx + 10, ty - 8, 36, 0.55 + shake + tilt, toolColor, near ? 0.5 + sq : 0);
     } else {
@@ -5148,6 +5885,7 @@ const KitchenArt = (() => {
     ctx.save();
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+    const isCake = dish && (dish.bakedCake || dish.cakeStyle || dish.recipeId === 'ht_rainbow_candy_cake' || dish.recipeId === 'ht_rainbow_rosette_cake');
     if (dish) drawDish(ctx, dish, cx, cy, dishScale, t, { scoopProgress: scoopP, toppingSprings: s.toppingSprings });
 
     const sampleId = dish && dish.items.length ? dish.items[0].id : 'strawberry';
@@ -5240,7 +5978,7 @@ const KitchenArt = (() => {
       ctx.translate(px, py);
       ctx.rotate(ang);
       ctx.scale((2 - sqz) * fscale, sqz * fscale);
-      drawSpoon(ctx, 0, 0, R, 0, { scoop: load, ingId: fs.ingId || sampleId, color: fs.color || dishCol, cooked: sampleCooked });
+      drawSpoon(ctx, 0, 0, R, 0, { scoop: load, ingId: fs.ingId || sampleId, color: fs.color || dishCol, cooked: sampleCooked, isCake });
       ctx.restore();
     } else {
       // Resting / dragged spoon, loaded with a bite while portions remain
@@ -5257,7 +5995,7 @@ const KitchenArt = (() => {
       ell(ctx, fork.x + 6, fork.y + 42, 24, 7);
       ctx.fill();
       drawSpoon(ctx, fork.x, fork.y + bob, R, -0.55 + (fork.dragging ? Math.sin(t * 10) * 0.05 : 0), {
-        scoop: (fork.dragging || bites < 3) ? 1 : 0, ingId: sampleId, color: dishCol, cooked: sampleCooked,
+        scoop: (fork.dragging || bites < 3) ? 1 : 0, ingId: sampleId, color: dishCol, cooked: sampleCooked, isCake,
       });
     }
     ctx.restore();
@@ -5286,5 +6024,7 @@ const KitchenArt = (() => {
     drawParticle,
     // stations
     drawChopStation, drawMixStation, drawCookStation, drawDecorateStation, drawFeedStation,
+    // HT Mini Cakes additions
+    drawSpecularCandyBall, drawButtercreamRosette, drawWhiteCakeTurntable, drawYellowSunflowerPot, drawRainbowArchFigurine,
   };
 })();

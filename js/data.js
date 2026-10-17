@@ -1,11 +1,25 @@
 'use strict';
 /* ==========================================================================
  * Chuyu's Rainbow Kitchen (楚楚的彩虹料理屋) — Game Data & Recipes
- * Designed for 5-year-old tactile play: 24 ingredients, 8 Critter customers,
- * 12 visual wish orders, piping colors, sauces, and toppings.
+ * Inspired by HT Mini Cakes: Magical Rainbow Candy Ball Chocolate Cake &
+ * Two-Tier Rainbow Buttercream Rosette Cake.
+ * Designed for 5-year-old tactile play: ingredients, 8 Critter customers,
+ * signature visual orders, 6-color rainbow piping, sauces, and toppings.
  * ========================================================================== */
 const KitchenData = (() => {
   const CRITTERS = [
+    {
+      id: 'craftycorn', name: '独角兽 CraftyCorn', en: 'CraftyCorn', icon: 'craftycorn',
+      color: '#5cc8ff', earType: 'unicorn', bellyColor: '#d6f3ff',
+      greeting: '哇~ 我想要撒满彩虹糖球的梦幻迷你蛋糕！',
+      favTag: 'rainbow',
+    },
+    {
+      id: 'bobby', name: '爱心小熊 Bobby', en: 'Bobby BearHug', icon: 'bobby',
+      color: '#ff5978', earType: 'bear', bellyColor: '#ffc2ce',
+      greeting: '抱抱~ 我最爱双层彩虹玫瑰花朵蛋糕啦！',
+      favTag: 'sweet',
+    },
     {
       id: 'catnap', name: '紫猫 CatNap', en: 'CatNap', icon: 'catnap',
       color: '#9b72ee', earType: 'cat', bellyColor: '#d9c6ff',
@@ -25,22 +39,10 @@ const KitchenData = (() => {
       favTag: 'sunny',
     },
     {
-      id: 'bobby', name: '爱心小熊 Bobby', en: 'Bobby BearHug', icon: 'bobby',
-      color: '#ff5978', earType: 'bear', bellyColor: '#ffc2ce',
-      greeting: '抱抱~ 我最爱挤满粉色奶油的草莓蛋糕啦！',
-      favTag: 'sweet',
-    },
-    {
       id: 'hoppy', name: '跳跳绿兔 Hoppy', en: 'Hoppy Hopscotch', icon: 'hoppy',
       color: '#52d66c', earType: 'bunny', bellyColor: '#c8f7d2',
       greeting: '耶！给我加一点跳跳糖或者冰爽水果吧！',
       favTag: 'magic',
-    },
-    {
-      id: 'craftycorn', name: '独角兽 CraftyCorn', en: 'CraftyCorn', icon: 'craftycorn',
-      color: '#5cc8ff', earType: 'unicorn', bellyColor: '#d6f3ff',
-      greeting: '哇~ 我想要撒满彩虹糖的梦幻甜品！',
-      favTag: 'rainbow',
     },
     {
       id: 'bubba', name: '聪明小象 Bubba', en: 'Bubba Bubbaphant', icon: 'bubba',
@@ -57,15 +59,41 @@ const KitchenData = (() => {
   ];
 
   const CATEGORIES = [
+    { id: 'magic', name: '🌈 蛋糕甜点', en: 'Cake & Sweets', color: '#9b6bff' },
     { id: 'fruit', name: '🍓 水果甜心', en: 'Sweet Fruits', color: '#ff6b8b' },
     { id: 'meat',  name: '🥩 肉蛋芝士', en: 'Meat, Egg & Cheese', color: '#ff9248' },
-    { id: 'veggie',name: '🍞 主食蔬菜', en: 'Dough & Veggies', color: '#4ec96f' },
-    { id: 'magic', name: '🌈 甜品魔法', en: 'Sweet & Magic', color: '#9b6bff' },
+    { id: 'veggie',name: '🍞 烘焙主食', en: 'Dough & Veggies', color: '#4ec96f' },
   ];
 
   const INGREDIENTS = [
-    // 1. Fruit
-    { id: 'strawberry', cat: 'fruit', emoji: '🍓', zh: '草莓', en: 'Strawberry',
+    // 1. Sweet & Magic (HT Mini Cakes focus: Cocoa, Chocolate, Cake Mix, Rainbow)
+    { id: 'chocolate', cat: 'magic', emoji: '🍫', zh: '丝滑巧克力', en: 'Chocolate Ganache',
+      color: '#5c3317', inner: '#8c532b', rim: '#3d1f0d', sliceStyle: 'choco',
+      choppable: true, grillable: false, sweet: 3, magic: 2 },
+    { id: 'cocoa', cat: 'magic', emoji: '🫘', zh: '迷你可可豆', en: 'Mini Cocoa Beans',
+      color: '#4a2511', inner: '#784323', rim: '#2a1308', sliceStyle: 'cocoa',
+      choppable: true, grillable: false, sweet: 1, magic: 2 },
+    { id: 'dough', cat: 'magic', emoji: '🎂', zh: '海绵蛋糕糊', en: 'Sponge Cake Mix',
+      color: '#fff1c2', inner: '#fffbee', rim: '#e2c578', sliceStyle: 'dough',
+      choppable: false, grillable: true, bakeable: true, cookedColor: '#e69c3a', sweet: 2, baseType: 'pancake' },
+    { id: 'milk', cat: 'magic', emoji: '🥛', zh: '鲜牛奶', en: 'Fresh Milk',
+      color: '#ffffff', inner: '#e8f6ff', rim: '#b8d8f0', sliceStyle: 'liquid',
+      liquid: true, choppable: false, grillable: false, sweet: 1, sleepy: 2 },
+    { id: 'honey', cat: 'magic', emoji: '🍯', zh: '星星蜂蜜', en: 'Star Honey',
+      color: '#ffb700', inner: '#ffe47a', rim: '#cc8800', sliceStyle: 'liquid',
+      liquid: true, choppable: false, grillable: false, sweet: 3, sleepy: 2 },
+    { id: 'popcandy', cat: 'magic', emoji: '🍬', zh: '彩虹糖球', en: 'Rainbow Candy Balls',
+      color: '#ff4081', inner: '#73f7ff', rim: '#8c2be0', sliceStyle: 'sparkle',
+      choppable: false, grillable: false, sweet: 3, magic: 5 },
+    { id: 'icecream', cat: 'magic', emoji: '🍦', zh: '冰淇淋球', en: 'Ice Cream Scoop',
+      color: '#d4f5ff', inner: '#ffffff', rim: '#82ddf7', sliceStyle: 'scoop',
+      choppable: false, grillable: false, sweet: 2, icy: 4 },
+    { id: 'boba', cat: 'magic', emoji: '🧋', zh: '黑糖珍珠', en: 'Boba Pearls',
+      color: '#3d2218', inner: '#734535', rim: '#1f100a', sliceStyle: 'boba',
+      choppable: false, grillable: false, sweet: 2, boba: 3 },
+
+    // 2. Fruit
+    { id: 'strawberry', cat: 'fruit', emoji: '🍓', zh: '鲜草莓', en: 'Strawberry',
       color: '#ff385c', inner: '#ffd1dc', rim: '#d91b42', sliceStyle: 'strawberry',
       choppable: true, grillable: false, sweet: 2, fruity: 2 },
     { id: 'banana', cat: 'fruit', emoji: '🍌', zh: '香蕉', en: 'Banana',
@@ -84,7 +112,7 @@ const KitchenData = (() => {
       color: '#ffea2b', inner: '#fff9b0', rim: '#d9be00', sliceStyle: 'citrus',
       choppable: true, grillable: false, sour: 4, fruity: 1 },
 
-    // 2. Meat, Egg & Cheese
+    // 3. Meat, Egg & Cheese
     { id: 'egg', cat: 'meat', emoji: '🥚', zh: '鸡蛋', en: 'Fresh Egg',
       color: '#fff6e6', inner: '#ffa200', rim: '#e0ceb2', sliceStyle: 'egg',
       crackable: true, choppable: false, grillable: true, cookedColor: '#fffdf7', savory: 2, sleepy: 1 },
@@ -104,10 +132,7 @@ const KitchenData = (() => {
       color: '#d95338', inner: '#ffab99', rim: '#992d17', sliceStyle: 'sausage',
       choppable: true, grillable: true, cookedColor: '#872612', savory: 2 },
 
-    // 3. Dough & Veggies
-    { id: 'dough', cat: 'veggie', emoji: '🥞', zh: '松饼蛋糕粉', en: 'Pancake & Cake Mix',
-      color: '#fff3c4', inner: '#fffbeb', rim: '#e0c67e', sliceStyle: 'dough',
-      choppable: false, grillable: true, bakeable: true, cookedColor: '#e69c3a', sweet: 2, baseType: 'pancake' },
+    // 4. Dough & Veggies
     { id: 'bun', cat: 'veggie', emoji: '🍔', zh: '汉堡面包', en: 'Burger Bun',
       color: '#e69838', inner: '#fff0c4', rim: '#b86f18', sliceStyle: 'bun',
       choppable: true, grillable: true, bakeable: true, cookedColor: '#d48322', savory: 2, baseType: 'burger' },
@@ -123,54 +148,65 @@ const KitchenData = (() => {
     { id: 'chili', cat: 'veggie', emoji: '🌶️', zh: '喷火红辣椒', en: 'Fire Chili',
       color: '#ff1a1a', inner: '#ff7b00', rim: '#b80000', sliceStyle: 'chili',
       choppable: true, grillable: true, cookedColor: '#cc0000', spicy: 5 },
-
-    // 4. Sweet & Magic
-    { id: 'milk', cat: 'magic', emoji: '🥛', zh: '鲜牛奶', en: 'Fresh Milk',
-      color: '#ffffff', inner: '#e8f6ff', rim: '#b8d8f0', sliceStyle: 'liquid',
-      liquid: true, choppable: false, grillable: false, sweet: 1, sleepy: 2 },
-    { id: 'chocolate', cat: 'magic', emoji: '🍫', zh: '丝滑巧克力', en: 'Chocolate',
-      color: '#6e3b24', inner: '#9e5d40', rim: '#472312', sliceStyle: 'choco',
-      choppable: true, grillable: false, sweet: 3 },
-    { id: 'honey', cat: 'magic', emoji: '🍯', zh: '星星蜂蜜', en: 'Star Honey',
-      color: '#ffb700', inner: '#ffe47a', rim: '#cc8800', sliceStyle: 'liquid',
-      liquid: true, choppable: false, grillable: false, sweet: 3, sleepy: 2 },
-    { id: 'icecream', cat: 'magic', emoji: '🍦', zh: '冰淇淋球', en: 'Ice Cream Scoop',
-      color: '#d4f5ff', inner: '#ffffff', rim: '#82ddf7', sliceStyle: 'scoop',
-      choppable: false, grillable: false, sweet: 2, icy: 4 },
-    { id: 'boba', cat: 'magic', emoji: '🧋', zh: '黑糖珍珠', en: 'Boba Pearls',
-      color: '#3d2218', inner: '#734535', rim: '#1f100a', sliceStyle: 'boba',
-      choppable: false, grillable: false, sweet: 2, boba: 3 },
-    { id: 'popcandy', cat: 'magic', emoji: '✨', zh: '云朵跳跳糖', en: 'Magic Cloud Candy',
-      color: '#c466ff', inner: '#73f7ff', rim: '#8c2be0', sliceStyle: 'sparkle',
-      choppable: false, grillable: false, sweet: 2, magic: 5 },
   ];
 
+  // 6-Color Rainbow Palette + White Cloud + Rich Dark Chocolate Ganache
   const PIPING_COLORS = [
+    { id: 'red',    zh: '草莓红奶油', color: '#ff385c', shadow: '#d11b3e', hi: '#ffa3b5' },
+    { id: 'orange', zh: '甜橙橘奶油', color: '#ff8822', shadow: '#d66200', hi: '#ffc17a' },
+    { id: 'yellow', zh: '香草黄奶油', color: '#ffd933', shadow: '#c7a30e', hi: '#fff08a' },
+    { id: 'green',  zh: '薄荷绿奶油', color: '#38d968', shadow: '#1ca645', hi: '#94f2b0' },
+    { id: 'blue',   zh: '天空蓝奶油', color: '#3399ff', shadow: '#126ecc', hi: '#94ccff' },
+    { id: 'purple', zh: '葡萄紫奶油', color: '#9d4edd', shadow: '#712bb5', hi: '#d0a2f7' },
     { id: 'white',  zh: '云朵白奶油', color: '#fffdf9', shadow: '#e0d6c8', hi: '#ffffff' },
-    { id: 'pink',   zh: '草莓粉奶油', color: '#ff85b3', shadow: '#d95488', hi: '#ffc2d9' },
-    { id: 'yellow', zh: '香草黄奶油', color: '#ffe359', shadow: '#d9b526', hi: '#fff5b8' },
-    { id: 'mint',   zh: '薄荷蓝奶油', color: '#6be8ff', shadow: '#32b5d4', hi: '#c7f7ff' },
-    { id: 'choco',  zh: '可可棕奶油', color: '#7a442b', shadow: '#4f2816', hi: '#a86748' },
+    { id: 'choco',  zh: '黑巧甘纳许', color: '#542d17', shadow: '#361b0c', hi: '#824c2d' },
   ];
 
   const SAUCES = [
-    { id: 'strawberry_sauce', zh: '🍓 草莓淋酱', color: '#ff2b5e', hi: '#ff94b0' },
-    { id: 'choco_sauce',      zh: '🍫 巧克力酱', color: '#592c18', hi: '#945337' },
+    { id: 'choco_sauce',      zh: '🍫 镜面巧克力酱', color: '#4a2512', hi: '#874e2b' },
+    { id: 'strawberry_sauce', zh: '🍓 鲜草莓淋酱', color: '#ff2b5e', hi: '#ff94b0' },
     { id: 'honey_sauce',      zh: '🍯 黄金蜂蜜酱', color: '#ffae00', hi: '#ffe478' },
     { id: 'cheese_sauce',     zh: '🧀 浓香芝士酱', color: '#ffc400', hi: '#fff099' },
   ];
 
+  // Featured HT Mini Cakes Toppings: Rainbow Candy Balls, Rainbow Arch, Sunflower Pot
   const TOPPINGS = [
-    { id: 'sprinkles', emoji: '🌈', zh: '彩虹糖针', en: 'Rainbow Sprinkles' },
-    { id: 'stars',     emoji: '⭐', zh: '星星糖片', en: 'Star Candy' },
-    { id: 'hearts',    emoji: '💖', zh: '爱心糖果', en: 'Heart Sweets' },
-    { id: 'berry_top', emoji: '🍓', zh: '鲜草莓顶', en: 'Fresh Berry' },
-    { id: 'cherry',    emoji: '🍒', zh: '红樱桃',   en: 'Sweet Cherry' },
-    { id: 'candle',    emoji: '🕯️', zh: '生日蜡烛', en: 'Birthday Candle' },
-    { id: 'umbrella',  emoji: '⛱️', zh: '果汁小伞', en: 'Drink Umbrella' },
+    { id: 'candy_balls', emoji: '🍬', zh: '彩虹糖球',   en: 'Rainbow Candy Balls' },
+    { id: 'rainbow_arch',emoji: '🌈', zh: '彩虹拱桥',   en: 'Rainbow Arch Topper' },
+    { id: 'flower_pot',  emoji: '🌻', zh: '微笑小花',   en: 'Mini Flower Pot' },
+    { id: 'sprinkles',   emoji: '✨', zh: '彩虹糖针',   en: 'Rainbow Sprinkles' },
+    { id: 'stars',       emoji: '⭐', zh: '星星糖片',   en: 'Star Candy' },
+    { id: 'hearts',      emoji: '💖', zh: '爱心糖果',   en: 'Heart Sweets' },
+    { id: 'berry_top',   emoji: '🍓', zh: '鲜草莓顶',   en: 'Fresh Berry' },
+    { id: 'cherry',      emoji: '🍒', zh: '红樱桃',     en: 'Sweet Cherry' },
+    { id: 'candle',      emoji: '🕯️', zh: '生日蜡烛',   en: 'Birthday Candle' },
+    { id: 'umbrella',    emoji: '⛱️', zh: '果汁小伞',   en: 'Drink Umbrella' },
   ];
 
+  // Signature HT Mini Cakes video dishes placed at the top!
   const WISH_ORDERS = [
+    {
+      id: 'ht_rainbow_candy_cake',
+      zh: '魔法彩虹糖球巧克力蛋糕', en: 'Magical Rainbow Candy Ball Cake',
+      critter: 'craftycorn',
+      icons: ['🎂', '🍫', '🍬'],
+      wantIds: ['dough', 'chocolate'],
+      wantCooking: 'oven',
+      wantDecor: true,
+      cakeStyle: 'candy_balls',
+      desc: '烘烤迷你巧克力蛋糕，淋上丝滑镜面巧克力酱，在旋转裱花台上贴满六色彩虹糖球与彩虹拱桥！',
+    },
+    {
+      id: 'ht_rainbow_rosette_cake',
+      zh: '双层彩虹玫瑰花朵蛋糕', en: 'Two-Tier Rainbow Buttercream Cake',
+      critter: 'bobby',
+      icons: ['🎂', '🧁', '🌈'],
+      wantIds: ['dough', 'milk'],
+      wantCooking: 'oven',
+      wantDecor: true,
+      cakeStyle: 'rainbow_rosettes',
+      desc: '在旋转裱花台上为双层蛋糕挤出红橙黄绿蓝紫六色彩虹玫瑰花裱花！',
+    },
     {
       id: 'strawberry_pancake',
       zh: '草莓奶油松饼塔', en: 'Strawberry Cream Pancakes',

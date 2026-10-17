@@ -41,7 +41,7 @@ const KitchenGame = (() => {
 
   // Game Mode & Customer State
   let mode = 'wish'; // 'wish' | 'free'
-  let critterIdx = 3; // Start with Bobby BearHug
+  let critterIdx = 0; // Start with CraftyCorn
   let orderIdx = 0;
   let station = 1; // 1:Chop, 2:Mix, 3:Cook, 4:Decorate, 5:Feed
   let activeCategory = 'fruit';
@@ -60,7 +60,7 @@ const KitchenGame = (() => {
   let mixColor = '#FFF5DC';
 
   // Station 3: Skillet Pan & Oven State
-  let cookMode = 'pan'; // 'pan' | 'oven'
+  let cookMode = 'oven'; // 'pan' | 'oven'
   let heatLevel = 2;    // 1:Low, 2:Med, 3:High
   let panItems = [];
   let cookProgress = 0;
@@ -133,15 +133,16 @@ const KitchenGame = (() => {
     // Station 2: orbital whisk & vortex
     mixVelocity: 0,
     mixSwirlAngle: 0,
+    mixAngle: 0,
     whiskOrbit: -0.7,
     whiskHeld: false,
     whiskTarget: 0,
     bowlTilt: 0,
     bowlTiltVel: 0,
     mixBarShown: 0,
-    // Station 3: chef pan toss
+    // Station 3: chef pan toss / HT mini oven
     panToss: {
-      active: false, t: 0, duration: 0.95, height: 118, spin: 1,
+      active: false, t: 0, duration: 0.95, height: 0, spin: 1,
       panDy: 0, panTilt: 0, bodies: [], baseBody: null, plan: [],
     },
     panCatch: 0,
@@ -149,7 +150,10 @@ const KitchenGame = (() => {
     ovenPulse: 0,
     ovenPulseVel: 0,
     cookNeedleShown: 0,
-    // Station 4: piping bag & bouncy toppings
+    // Station 4: HT Mini Cakes spinning turntable & decorating
+    turntableAngle: 0,
+    turntableVel: 0,
+    cakeStyle: 'candy_balls', // 'candy_balls' | 'rainbow_rosettes'
     pipingAnim: { active: false, t: 0, x: 0, y: 0, color: '#FFFDF9', kind: 'piping', squeeze: 0, shake: 0 },
     toppingSprings: [],
     toolPos: { x: 480, y: 360, vx: 0, vy: 0 },
@@ -291,6 +295,12 @@ const KitchenGame = (() => {
       piping: [],
       sauces: [],
       toppings: [],
+      candyBalls: [],
+      candyBallCount: 0,
+      rosettes: [],
+      rosetteCount: 0,
+      cakeStyle: 'candy_balls',
+      turntableAngle: 0,
       bitesTaken: 0,
     };
   }
@@ -459,101 +469,99 @@ const KitchenGame = (() => {
     return p;
   }
 
-  // Legacy radial burst signature (x, y, color, count, kind)
+  // Calm local particle burst signature (x, y, color, count, kind)
   function spawnParticles(x, y, color, count, kind, layer) {
-    const n = count || 12;
+    const n = Math.min(count || 6, 8);
     for (let i = 0; i < n; i++) {
       const a = Math.random() * PI2;
-      const sp = 70 + Math.random() * 170;
-      const k = kind || (i % 3 === 0 ? 'star' : 'droplet');
+      const sp = rand(10, 30);
+      const k = kind || (i % 3 === 0 ? 'sparkle' : 'circle');
       const floaty = k === 'smoke' || k === 'steam';
       spawnParticle({
-        x, y,
+        x: x + rand(-4, 4), y: y + rand(-4, 4),
         vx: Math.cos(a) * sp,
-        vy: Math.sin(a) * sp - 90,
-        r: k === 'star' || k === 'heart' ? rand(5, 9) : rand(3.5, 7),
+        vy: Math.sin(a) * sp - (floaty ? 15 : 0),
+        r: k === 'star' || k === 'heart' ? rand(3, 5.5) : rand(2, 4),
         color,
         kind: k,
-        life: rand(0.7, 1.15),
+        life: rand(0.3, 0.6),
         glow: k === 'star' || k === 'heart' || k === 'sparkle',
-        g: floaty ? -40 : 560,
-        drag: floaty ? 2.2 : 1.4,
+        g: floaty ? -10 : 30,
+        drag: 2.2,
         layer: layer === undefined ? 0 : layer,
       });
     }
   }
 
   function juiceBurst(x, y, colA, colB, n, layer) {
-    for (let i = 0; i < n; i++) {
-      const a = -Math.PI / 2 + rand(-1.3, 1.3);
-      const sp = rand(150, 340);
+    const count = Math.min(n || 4, 6);
+    for (let i = 0; i < count; i++) {
+      const a = rand(0, PI2);
+      const sp = rand(10, 25);
       spawnParticle({
-        x: x + rand(-6, 6), y,
+        x: x + rand(-3, 3), y: y + rand(-3, 3),
         vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
-        g: 980, drag: 0.8, r: rand(2.8, 5.8),
-        color: i % 2 ? colA : colB, kind: 'droplet', life: rand(0.55, 0.9), layer,
-      });
-    }
-    for (let i = 0; i < 3; i++) {
-      spawnParticle({
-        x: x + rand(-22, 22), y: y - rand(10, 30),
-        vx: rand(-60, 60), vy: rand(-150, -60),
-        g: 120, drag: 2.2, r: rand(5, 8),
-        color: '#FFF3B8', kind: 'sparkle', glow: true, life: rand(0.5, 0.8), layer,
+        g: 80, drag: 2.2, r: rand(1.8, 3.2),
+        color: i % 2 ? colA : colB, kind: 'droplet', life: rand(0.25, 0.45), layer: layer || 0,
       });
     }
   }
 
   function starBurst(x, y, color, n, layer, upward) {
-    for (let i = 0; i < n; i++) {
-      const a = upward ? -Math.PI / 2 + rand(-0.9, 0.9) : rand(0, PI2);
-      const sp = rand(110, 260);
+    const count = Math.min(n || 4, 6);
+    for (let i = 0; i < count; i++) {
+      const a = rand(0, PI2);
+      const sp = rand(8, 26);
       spawnParticle({
-        x, y,
-        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - (upward ? 30 : 60),
-        g: 380, drag: 1.7, r: rand(5, 9),
+        x: x + rand(-4, 4), y: y + rand(-4, 4),
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp,
+        g: 25, drag: 2.4, r: rand(2.2, 4.2),
         color: Array.isArray(color) ? color[i % color.length] : color,
-        kind: i % 4 === 3 ? 'sparkle' : 'star', glow: true, life: rand(0.7, 1.1), layer,
+        kind: 'sparkle', glow: true, life: rand(0.3, 0.5), layer: layer === undefined ? 0 : layer,
       });
     }
   }
 
   function heartBurst(x, y, n, layer) {
     const cols = ['#E87A82', '#F4A6B8', '#F7C948'];
-    for (let i = 0; i < n; i++) {
+    const count = Math.min(n || 4, 6);
+    for (let i = 0; i < count; i++) {
       spawnParticle({
-        x: x + rand(-18, 18), y: y + rand(-8, 8),
-        vx: rand(-95, 95), vy: rand(-220, -110),
-        g: -30, drag: 1.9, r: rand(6, 10),
-        color: cols[i % 3], kind: i % 3 === 2 ? 'sparkle' : 'heart',
-        glow: true, life: rand(0.9, 1.4), vrot: rand(-2, 2), layer: layer || 0,
+        x: x + rand(-8, 8), y: y + rand(-4, 4),
+        vx: rand(-12, 12), vy: rand(-18, -6),
+        g: -5, drag: 2.0, r: rand(4.5, 7.5),
+        color: cols[i % 3], kind: 'heart',
+        glow: true, life: rand(0.6, 1.0), vrot: rand(-1, 1), layer: layer || 0,
       });
     }
   }
 
   function steamPuff(x, y, n, layer, dark) {
-    for (let i = 0; i < n; i++) {
+    const count = Math.min(n || 3, 5);
+    for (let i = 0; i < count; i++) {
       spawnParticle({
-        x: x + rand(-14, 14), y: y + rand(-6, 6),
-        vx: rand(-14, 14), vy: rand(-75, -40),
-        g: -18, drag: 1.1, r: rand(6, 11),
-        color: dark ? 'rgba(85, 70, 62, 0.55)' : 'rgba(255, 252, 244, 0.8)',
-        kind: 'steam', life: rand(0.8, 1.3), vrot: 0, layer,
+        x: x + rand(-8, 8), y: y + rand(-4, 4),
+        vx: rand(-8, 8), vy: rand(-30, -12),
+        g: -8, drag: 1.5, r: rand(4, 7),
+        color: dark ? 'rgba(85, 70, 62, 0.45)' : 'rgba(255, 252, 244, 0.7)',
+        kind: 'steam', life: rand(0.5, 0.9), vrot: 0, layer: layer || 0,
       });
     }
   }
 
   function ringPulse(x, y, color, layer, r) {
-    spawnParticle({ x, y, vx: 0, vy: 0, g: 0, drag: 0, r: r || 12, color, kind: 'ring', life: 0.4, vrot: 0, layer });
+    spawnParticle({ x, y, vx: 0, vy: 0, g: 0, drag: 0, r: r || 10, color, kind: 'ring', life: 0.35, vrot: 0, layer });
   }
 
   function crumbBurst(x, y, color, n, layer) {
-    for (let i = 0; i < n; i++) {
+    const count = Math.min(n || 3, 5);
+    for (let i = 0; i < count; i++) {
       spawnParticle({
-        x: x + rand(-8, 8), y,
-        vx: rand(-85, 85), vy: rand(-130, -20),
-        g: 900, drag: 0.6, r: rand(2.2, 4),
-        color: i % 2 ? color : '#E9C189', kind: 'crumb', life: rand(0.5, 0.8), layer: layer || 0,
+        x: x + rand(-4, 4), y: y + rand(-2, 2),
+        vx: rand(-12, 12), vy: rand(-10, 6),
+        g: 100, drag: 2.2, r: rand(1.5, 3),
+        color: i % 2 ? color : '#E9C189', kind: 'crumb', life: rand(0.25, 0.4), layer: layer || 0,
       });
     }
   }
@@ -577,10 +585,11 @@ const KitchenGame = (() => {
   }
 
   function confettiBurst(x, y, n, layer) {
-    for (let i = 0; i < n; i++) {
-      const a = -Math.PI / 2 + rand(-1.2, 1.2);
-      const sp = rand(170, 350);
-      spawnConfetti(x, y, Math.cos(a) * sp, Math.sin(a) * sp, layer);
+    const count = Math.min(n || 4, 6);
+    for (let i = 0; i < count; i++) {
+      const a = rand(0, PI2);
+      const sp = rand(20, 50);
+      spawnConfetti(x, y, Math.cos(a) * sp, Math.sin(a) * sp, layer || 0);
     }
   }
 
@@ -757,7 +766,7 @@ const KitchenGame = (() => {
   }
 
   /* ==========================================================================
-   * Flying Ingredient Arcs (shelf card -> active station)
+   * Grounded Ingredient Placement (100% In-Place, Zero Flying Junk)
    * ========================================================================== */
   function stationDropPoint(st) {
     const c = stationCenter(st);
@@ -766,94 +775,21 @@ const KitchenGame = (() => {
   }
 
   function launchFlyingIngredient(id) {
-    let card = null;
-    try {
-      card = document.querySelector('.ing-card[data-ing="' + id + '"]');
-    } catch (e) {}
-    const from = domPointInCanvas(card) || { x: W * 0.46, y: H + 30 };
-    const to = stationDropPoint(station);
-    const f = {
-      id,
-      x0: from.x, y0: from.y,
-      x1: to.x, y1: to.y,
-      p: 0, dur: 0.46,
-      apex: clamp(90 + Math.abs(from.y - to.y) * 0.35, 90, 190),
-      spin: Math.random() < 0.5 ? -1 : 1,
-      st: station,
-    };
-    state.flyers.push(f);
-    if (state.flyers.length > 6) {
-      const old = state.flyers.shift();
-      onIngredientLanded(old);
-    }
-    return f.dur;
+    // 100% Zero flying ingredients across screen!
+    return 0;
   }
 
   function flyerPos(f) {
-    const p = clamp01(f.p);
-    return {
-      x: lerp(f.x0, f.x1, p),
-      y: lerp(f.y0, f.y1, p) - f.apex * 4 * p * (1 - p),
-      rot: f.spin * (1 - easeOutCubic(p)) * 2.4,
-      scale: 0.86 + 0.24 * Math.sin(p * Math.PI),
-    };
+    return { x: (f && f.x1) || 0, y: (f && f.y1) || 0, rot: 0, scale: 1 };
   }
 
   function updateFlyers(dt) {
-    const fl = state.flyers;
-    for (let i = fl.length - 1; i >= 0; i--) {
-      const f = fl[i];
-      f.p += dt / f.dur;
-      if (f.p >= 1) {
-        fl.splice(i, 1);
-        onIngredientLanded(f);
-      }
-    }
+    state.flyers = [];
   }
 
-  function onIngredientLanded(f) {
-    const meta = KitchenData.getIngredient(f.id);
-    const st = f.st;
-    if (!stationVisible(st)) return;
-    const x = f.x1, y = f.y1;
-    if (st === 1) {
-      squashImpulse(1.3, 0.74);
-      state.boardRecoilVel += 140;
-      ringPulse(x, y + 26, 'rgba(255, 253, 249, 0.9)', 1, 16);
-      starBurst(x, y - 10, ['#FFF3B8', meta.color], 5, 1, true);
-    } else if (st === 2) {
-      if (meta.liquid) sfx('pour');
-      else sfx('stir');
-      state.mixVelocity += state.mixVelocity >= 0 ? 2.2 : -2.2;
-      state.bowlTiltVel += 1.1;
-      squashImpulse(1.12, 0.9);
-      juiceBurst(x, y - 6, mixColor, meta.color, 9, 2);
-      ringPulse(x, y + 4, 'rgba(255, 253, 249, 0.85)', 2, 18);
-    } else if (st === 3) {
-      sfx('sizzleTick', heatLevel);
-      squashImpulse(1.14, 0.88);
-      steamPuff(x, y - 6, 4, 3, false);
-      starBurst(x, y - 10, ['#F7C948', '#F5A623'], 5, 3, true);
-    } else {
-      squashImpulse(1.1, 0.92);
-      starBurst(x, y - 12, ['#F7C948', '#F4A6B8'], 6, st, true);
-    }
-  }
+  function onIngredientLanded(f) {}
 
-  function drawFlyers(c) {
-    for (let i = 0; i < state.flyers.length; i++) {
-      const f = state.flyers[i];
-      const fp = flyerPos(f);
-      c.save();
-      c.globalAlpha = 0.16;
-      c.fillStyle = '#5C3D2E';
-      const shadowK = clamp01(f.p);
-      KitchenArt.ell(c, lerp(f.x0, f.x1, shadowK), lerp(f.y0, f.y1, shadowK) + 30, 22 * fp.scale, 7 * fp.scale);
-      c.fill();
-      c.restore();
-      KitchenArt.drawIngredient(c, f.id, fp.x, fp.y, 38 * fp.scale, { rot: fp.rot, shadow: false });
-    }
-  }
+  function drawFlyers(c) {}
 
   function isLanded(item) {
     const born = popIns.get(item);
@@ -884,9 +820,9 @@ const KitchenGame = (() => {
     const meta = KitchenData.getIngredient(id);
     sfx('ensure');
     sfx('popSelect', id.length);
-    const flight = canvas ? launchFlyingIngredient(meta.id) : 0;
-    const landT = state.t + flight;
-    squashImpulse(1.14, 0.9);
+    // Grounded placement in-place: zero flying junk across screen!
+    const landT = state.t;
+    squashImpulse(1.08, 0.94);
 
     if (station === 1) {
       finishKnifeNow();
@@ -976,16 +912,16 @@ const KitchenGame = (() => {
       });
       syncIngredientToPipeline(boardItem.id, boardItem.sliced, boardItem.cracked);
       if (view && canvas) {
-        trayHidden++;
-        view.finishPending = true;
-        if (!usesKnife) {
-          view.sliced = boardItem.sliced;
-          view.cracked = boardItem.cracked;
-          markViewDone(view, Math.max(0, view.landT - state.t) + 0.12);
-        }
+        trayHidden = 0;
+        view.finishPending = false;
+        view.sliced = boardItem.sliced;
+        view.cracked = boardItem.cracked;
+        view.doneT = state.t;
       }
       boardItem = null;
+      state.boardView = null;
       lastFinishT = state.t;
+      trayHidden = 0;
     }
     renderPrepTrayUI();
     renderPrimaryActionButton();
@@ -1069,9 +1005,10 @@ const KitchenGame = (() => {
     if (view.chops >= view.maxChops) {
       view.sliced = !!meta.choppable;
       view.cracked = !!meta.crackable;
-      markViewDone(view, 0.46);
+      view.finishPending = false;
       const c = stationCenter(1);
-      starBurst(c.x, c.y - 36, ['#F7C948', '#FFF3B8', meta.color], 9, 1, true);
+      ringPulse(c.x, c.y + 20, 'rgba(255, 253, 249, 0.9)', 1, 14);
+      starBurst(c.x, c.y - 10, ['#F7C948', '#FFF3B8', meta.color], 4, 1);
     }
   }
 
@@ -1084,19 +1021,12 @@ const KitchenGame = (() => {
 
   function markViewDone(view, hold) {
     view.doneT = state.t;
-    view.hopAt = state.t + (hold || 0.45);
+    view.finishPending = false;
   }
 
   function retireBoardView() {
-    const v = state.boardView;
-    if (!v) return;
-    if (v.finishPending) {
-      startHop(v);
-    } else {
-      const c = stationCenter(1);
-      starBurst(c.x, c.y - 10, ['#FFF3B8', '#F4A6B8'], 4, 1, true);
-    }
     state.boardView = null;
+    state.hopSlices = [];
   }
 
   function sliceLayout(view, cx, cy, sepOverride) {
@@ -1142,79 +1072,23 @@ const KitchenGame = (() => {
 
   function startHop(view) {
     if (state.boardView === view) state.boardView = null;
-    view.finishPending = false;
-    const off = layerOffset(1);
-    if (off === null || !canvas) {
-      revealTray();
-      return;
-    }
-    const ctr = stationCenter(1);
-    const pieces = sliceLayout(view, ctr.x, ctr.y, 1);
-    const target = basketPoint();
-    pieces.forEach((pc, i) => {
-      state.hopSlices.push({
-        id: view.id,
-        sliced: pc.sliced,
-        cracked: view.cracked,
-        x0: pc.x + off, y0: pc.y,
-        x1: target.x - i * 5, y1: target.y,
-        r0: pc.r, rot0: pc.rot,
-        p: -i * 0.09, dur: 0.6,
-        spin: (i % 2 ? -1 : 1) * rand(0.8, 1.3),
-        apex: rand(90, 130),
-        first: i === 0,
-      });
-    });
-    sfx('popSelect', 2);
+    if (view) view.finishPending = false;
+    trayHidden = 0;
+    state.hopSlices = [];
+    renderPrepTrayUI();
   }
 
   function revealTray() {
-    if (trayHidden > 0) trayHidden--;
+    trayHidden = 0;
     renderPrepTrayUI();
   }
 
   function updateBoard(dt) {
-    const v = state.boardView;
-    if (v && v.finishPending && v.doneT >= 0 && state.t >= v.hopAt) {
-      startHop(v);
-    }
-    const hs = state.hopSlices;
-    for (let i = hs.length - 1; i >= 0; i--) {
-      const h = hs[i];
-      h.p += dt / h.dur;
-      if (h.p >= 1) {
-        hs.splice(i, 1);
-        starBurst(h.x1, h.y1, ['#F7C948', '#9CD3C2', '#F4A6B8'], 4, 0, true);
-        if (h.first) {
-          revealTray();
-          sfx('popSelect', 4);
-        }
-      }
-    }
-    // Safety: never leave tray items hidden when nothing is in flight.
-    const pending = state.boardView && state.boardView.finishPending;
-    if (trayHidden > 0 && !hs.length && !pending) {
-      trayHidden = 0;
-      renderPrepTrayUI();
-    }
+    trayHidden = 0;
+    state.hopSlices = [];
   }
 
-  function drawHopSlices(c) {
-    for (let i = 0; i < state.hopSlices.length; i++) {
-      const h = state.hopSlices[i];
-      if (h.p <= 0) continue;
-      const p = clamp01(h.p);
-      const x = lerp(h.x0, h.x1, p);
-      const y = lerp(h.y0, h.y1, p) - h.apex * 4 * p * (1 - p);
-      const r = lerp(h.r0, 15, easeInQuad(p));
-      KitchenArt.drawIngredient(c, h.id, x, y, r, {
-        sliced: h.sliced,
-        cracked: h.cracked,
-        rot: h.rot0 + h.spin * Math.PI * 1.6 * p,
-        shadow: false,
-      });
-    }
-  }
+  function drawHopSlices(c) {}
 
   function updateKnife(dt) {
     const ks = state.knifeSlash;
@@ -1307,8 +1181,6 @@ const KitchenGame = (() => {
     } else {
       if (meta.liquid) sfx('pour');
       else sfx('chop');
-      const c = stationCenter(2);
-      juiceBurst(c.x, c.y - 10, mixColor, meta.color, 8, 2);
     }
     recomputeMixColor();
     addIngredientToDish(id, true, 0, undefined, landT);
@@ -1373,10 +1245,8 @@ const KitchenGame = (() => {
       sfx('stir');
     }
     dish.liquidColor = mixColor;
-    if (mixProgress >= 1) {
-      const c = stationCenter(2);
-      starBurst(c.x, c.y - 40, [mixColor, '#F7C948', '#FFF3B8'], wasDone ? 4 : 16, 2, true);
-      if (!wasDone) sfx('sparkle');
+    if (mixProgress >= 1 && !wasDone) {
+      sfx('sparkle');
     }
     renderPrimaryActionButton();
   }
@@ -1391,43 +1261,13 @@ const KitchenGame = (() => {
     if (!state.whiskHeld) state.mixVelocity *= Math.exp(-visc * dt);
     if (Math.abs(state.mixVelocity) < 0.02) state.mixVelocity = 0;
     state.mixSwirlAngle += state.mixVelocity * dt;
+    state.mixAngle = state.mixSwirlAngle;
     if (state.whiskHeld) {
       state.whiskOrbit += wrapAngle(state.whiskTarget - state.whiskOrbit) * (1 - Math.exp(-20 * dt));
     } else {
       state.whiskOrbit += state.mixVelocity * 0.9 * dt;
     }
     state.mixBarShown += (mixProgress - state.mixBarShown) * (1 - Math.exp(-8 * dt));
-
-    if (!stationVisible(2)) return;
-    const c = stationCenter(2);
-    const spd = Math.abs(state.mixVelocity);
-    const dropRate = artFn('drawMixStation') ? 0.6 : 1.1;
-    if (mixMode === 'bowl' && spd > 4.5 && mixItems.length && Math.random() < dt * spd * dropRate) {
-      // Colorful batter droplets flung off the whisk tangentially
-      const a = state.whiskOrbit + rand(-0.3, 0.3);
-      const tang = Math.sign(state.mixVelocity);
-      spawnParticle({
-        x: c.x + Math.cos(a) * 70,
-        y: c.y + Math.sin(a) * 38 - 8,
-        vx: -Math.sin(a) * tang * spd * 13 + rand(-30, 30),
-        vy: -rand(150, 270),
-        g: 860, drag: 0.8, r: rand(3, 5.5),
-        color: Math.random() < 0.7 ? mixColor : '#FFFDF9',
-        kind: 'droplet', life: rand(0.5, 0.8), layer: 2,
-      });
-    }
-    if ((spd > 7 || mixProgress >= 1) && Math.random() < dt * (mixProgress >= 1 ? 3 : 1.6)) {
-      // Floating star sparkles above the swirling vortex
-      const cols = ['#F7C948', '#F4A6B8', '#9CD3C2', '#C9B3E8'];
-      spawnParticle({
-        x: c.x + rand(-95, 95), y: c.y - rand(20, 70),
-        vx: rand(-20, 20), vy: rand(-75, -30),
-        g: -10, drag: 1.5, r: rand(5, 8.5),
-        color: cols[Math.floor(Math.random() * cols.length)],
-        kind: Math.random() < 0.5 ? 'sparkle' : 'star', glow: true,
-        life: rand(0.8, 1.3), vrot: rand(-2, 2), layer: 2,
-      });
-    }
   }
 
   /* ==========================================================================
@@ -1454,197 +1294,73 @@ const KitchenGame = (() => {
         prepTray.forEach(p => addToCooker(p.id, p.sliced, p.cracked));
       } else {
         addToCooker('dough', false, false);
-        addToCooker('egg', false, true);
+        if (cookMode === 'oven') {
+          addToCooker('chocolate', true, false);
+        } else {
+          addToCooker('egg', false, true);
+        }
       }
     }
     const c = stationCenter(3);
     if (cookMode === 'oven') {
-      cookProgress = Math.min(0.85, cookProgress + 0.45);
+      cookProgress = Math.min(1.0, cookProgress + 0.35);
       dish.bakedCake = true;
-      sfx('ovenDing');
-      state.ovenPulseVel += 7;
-      squashImpulse(1.16, 0.88);
-      starBurst(c.x, c.y - 40, ['#F7C948', '#FFF3B8', '#F5A623'], 14, 3, true);
-      steamPuff(c.x, c.y - 70, 4, 3, false);
+      if (!sfx('ovenDing')) sfx('sparkle');
+      state.ovenPulseVel += 12;
+      squashImpulse(1.06, 0.94);
+      steamPuff(c.x, c.y - 70, 3, 3, false);
     } else {
-      cookProgress = Math.min(1.3, cookProgress + 0.28);
-      startPanToss();
+      cookProgress = Math.min(1.0, cookProgress + 0.22);
+      sfx('sizzleTick', heatLevel);
+      squashImpulse(1.05, 0.95);
     }
     syncCookedStateToDish();
     renderPrimaryActionButton();
   }
 
   function startPanToss() {
-    const pt = state.panToss;
-    if (pt.active) finishPanTossNow();
-    pt.active = true;
-    pt.t = 0;
-    pt.duration = 0.95;
-    pt.height = clamp(H * 0.2, 84, 132) * rand(0.92, 1.08);
-    pt.spin = Math.random() < 0.5 ? -1 : 1;
-    pt.plan = [];
-    const isBase = it => it.id === 'dough' || it.id === 'pizzabase';
-    const hasBase = panItems.some(isBase);
-    if (hasBase) {
-      pt.plan.push({ base: true, item: null, delay: 0, h: pt.height * 1.06, spin: pt.spin, drift: rand(-6, 6), landed: false, landAt: 0 });
-    }
-    let order = hasBase ? 1 : 0;
-    panItems.forEach((it, i) => {
-      if (isBase(it)) return;
-      pt.plan.push({
-        base: false,
-        item: it,
-        delay: Math.min(0.18, order * 0.045),
-        h: pt.height * rand(0.8, 1.15),
-        spin: (i % 2 ? -1 : 1) * pt.spin,
-        drift: rand(-16, 16),
-        landed: false,
-        landAt: 0,
-      });
-      order++;
-    });
-    if (!sfx('panToss')) sfx('flip');
-    squashImpulse(1.12, 0.9);
+    state.panToss.active = false;
+    state.panToss.t = 0;
+    state.panToss.bodies = [];
+    state.panToss.baseBody = null;
+    squashImpulse(1.04, 0.96);
   }
 
   function finishPanTossNow() {
-    const pt = state.panToss;
-    if (!pt.active) return;
-    pt.plan.forEach(pl => {
-      if (!pl.landed) {
-        pl.landed = true;
-        onTossBodyLanded(pl);
-      }
-    });
-    pt.active = false;
-    pt.bodies = [];
-    pt.baseBody = null;
+    state.panToss.active = false;
+    state.panToss.bodies = [];
+    state.panToss.baseBody = null;
   }
 
-  function onTossBodyLanded(pl) {
-    const c = stationCenter(3);
-    const it = pl.item;
-    const x = c.x + (it ? it.x : 0);
-    const y = c.y + (it ? it.y : 0);
-    sfx('sizzleTick', heatLevel);
-    state.panCatchVel += pl.base ? 170 : 90;
-    if (stationVisible(3)) {
-      starBurst(x, y - 10, ['#F7C948', '#FFE08A', '#F5A623'], pl.base ? 7 : 4, 3, true);
-      steamPuff(x, y - 14, pl.base ? 4 : 2, 3, cookProgress > 1.08);
-      ringPulse(x, y + 4, 'rgba(255, 236, 170, 0.85)', 3, pl.base ? 24 : 12);
-    }
-  }
+  function onTossBodyLanded(pl) {}
 
   function computeTossBody(pl, k, dur) {
-    const b = { dx: 0, dy: 0, rot: 0, flip: 0, sx: 1, sy: 1, shadow: 1 };
-    const u = (k - TOSS_LAUNCH - pl.delay) / TOSS_FLIGHT;
-    if (u < 0) {
-      // Crouch & load before the launch (anticipation)
-      const pre = clamp01((k - (TOSS_LAUNCH + pl.delay - 0.08)) / 0.08);
-      b.sx = 1 + 0.12 * pre;
-      b.sy = 1 - 0.12 * pre;
-    } else if (u <= 1) {
-      const arc = 4 * u * (1 - u);
-      b.dy = -pl.h * arc;
-      b.dx = Math.sin(u * Math.PI) * pl.drift;
-      const spinE = easeInOutCubic(u);
-      if (pl.base) b.flip = spinE;
-      else b.rot = pl.spin * PI2 * spinE;
-      const stretch = (1 - arc) * 0.14;
-      b.sx = 1 - stretch * 0.6;
-      b.sy = 1 + stretch;
-      b.shadow = 1 - 0.65 * arc;
-    } else {
-      // "Sear-stamp" landing squash that wobbles out
-      const since = Math.max(0, (k - pl.landAt) * dur);
-      const sq = Math.exp(-since * 9) * Math.cos(since * 30);
-      b.sx = 1 + 0.26 * sq;
-      b.sy = 1 - 0.26 * sq;
-    }
-    return b;
+    return { dx: 0, dy: 0, rot: 0, flip: 0, sx: 1, sy: 1, shadow: 1 };
   }
 
   function updateCook(dt) {
-    const pt = state.panToss;
-    if (pt.active) {
-      pt.t = Math.min(1, pt.t + dt / pt.duration);
-      const k = pt.t;
-      // Pan choreography: dip -> snap upward flick -> recover
-      let dy, tilt;
-      if (k < 0.14) {
-        const e = easeOutCubic(k / 0.14);
-        dy = 12 * e;
-        tilt = -0.07 * e;
-      } else if (k < 0.24) {
-        const e = easeOutCubic(seg(k, 0.14, 0.24));
-        dy = lerp(12, -24, e);
-        tilt = lerp(-0.07, 0.13, e);
-      } else {
-        const e = easeInOutCubic(seg(k, 0.24, 0.52));
-        dy = lerp(-24, 0, e);
-        tilt = lerp(0.13, 0, e);
-      }
-      pt.panDy = dy + state.panCatch;
-      pt.panTilt = tilt;
-      const byItem = new Map();
-      pt.baseBody = null;
-      pt.plan.forEach(pl => {
-        const u = (k - TOSS_LAUNCH - pl.delay) / TOSS_FLIGHT;
-        if (u > 1 && !pl.landed) {
-          pl.landed = true;
-          pl.landAt = k;
-          onTossBodyLanded(pl);
-        }
-        const body = computeTossBody(pl, k, pt.duration);
-        if (pl.base) pt.baseBody = body;
-        else byItem.set(pl.item, body);
-      });
-      pt.byItem = byItem;
-      if (pt.t >= 1) {
-        finishPanTossNow();
-        pt.byItem = null;
-      }
-    } else {
-      pt.panDy = state.panCatch;
-      pt.panTilt = 0;
-    }
-
+    state.panToss.active = false;
+    state.panToss.panDy = 0;
+    state.panToss.panTilt = 0;
     state.cookNeedleShown += (cookProgress - state.cookNeedleShown) * (1 - Math.exp(-7 * dt));
 
-    if (station === 3 && panItems.length > 0 && cookMode === 'pan') {
-      cookProgress += dt * 0.055 * heatLevel;
+    if (station === 3 && panItems.length > 0) {
+      cookProgress = Math.min(1.0, cookProgress + dt * 0.045 * heatLevel);
       syncCookedStateToDish();
       sizzleTimer -= dt;
       if (sizzleTimer <= 0) {
-        sizzleTimer = 0.16;
-        sfx('sizzleTick', heatLevel * 0.45);
+        sizzleTimer = 0.22;
+        sfx('sizzleTick', heatLevel * 0.35);
       }
       if (stationVisible(3)) {
         const c = stationCenter(3);
-        // art.js skillet already draws foam rings + steam: keep ours as accents
-        const hero = !!artFn('drawCookStation');
-        if (Math.random() < dt * (hero ? 3 : 7) * heatLevel) {
+        if (Math.random() < dt * 2.2 * heatLevel) {
           spawnParticle({
-            x: c.x + rand(-70, 70), y: c.y + rand(-30, 20),
-            vx: rand(-10, 10), vy: rand(-60, -34),
-            g: -16, drag: 1.0, r: rand(5, 9),
-            color: cookProgress > 1.05 ? 'rgba(80, 65, 55, 0.6)' : 'rgba(255, 250, 235, 0.75)',
-            kind: 'steam', life: rand(0.8, 1.2), vrot: 0, layer: 3,
-          });
-        }
-        if (!hero && Math.random() < dt * 5 * heatLevel) {
-          // Bubbling butter foam rings on the hot skillet surface
-          spawnParticle({
-            x: c.x + rand(-90, 90), y: c.y + rand(-44, 40),
-            vx: 0, vy: 0, g: 0, drag: 0, r: rand(3, 6),
-            color: 'rgba(255, 238, 186, 0.9)', kind: 'ring', life: rand(0.3, 0.5), vrot: 0, layer: 3,
-          });
-        }
-        if (heatLevel === 3 && Math.random() < dt * 2.5) {
-          spawnParticle({
-            x: c.x + rand(-80, 80), y: c.y + rand(-30, 20),
-            vx: rand(-40, 40), vy: rand(-170, -90), g: 420, drag: 1.4, r: rand(3.5, 5.5),
-            color: '#F7C948', kind: 'star', glow: true, life: rand(0.5, 0.8), layer: 3,
+            x: c.x + rand(-50, 50), y: c.y + rand(-20, 15),
+            vx: rand(-6, 6), vy: rand(-25, -12),
+            g: -10, drag: 1.2, r: rand(3.5, 6.5),
+            color: cookMode === 'oven' ? 'rgba(255, 240, 210, 0.7)' : 'rgba(255, 250, 235, 0.65)',
+            kind: 'steam', life: rand(0.6, 1.0), vrot: 0, layer: 3,
           });
         }
       }
@@ -1664,10 +1380,13 @@ const KitchenGame = (() => {
    * Station 4: Piping Cream, Drizzling Sauce & Bouncy Toppings
    * ========================================================================== */
   function ensureDishHasBase() {
-    if (dish.items.length === 0 && !dish.bakedCake) {
-      dish.bakedCake = true;
-      dish.liquidColor = '#F4B8C4';
-      addIngredientToDish('strawberry', true, 0);
+    dish.bakedCake = true;
+    if (!dish.cakeStyle) dish.cakeStyle = state.cakeStyle || 'candy_balls';
+    if (!dish.liquidColor) dish.liquidColor = '#542d17';
+    dish.turntableAngle = state.turntableAngle;
+    if (dish.items.length === 0) {
+      addIngredientToDish('dough', false, 0.9);
+      addIngredientToDish('chocolate', true, 0.9);
     }
   }
 
@@ -1711,46 +1430,127 @@ const KitchenGame = (() => {
         tp.blownOut = true;
         sfx('blowCandle');
         const c = stationCenter(4);
-        steamPuff(c.x + tp.x * 1.08, c.y + (tp.y - 30) * 1.08, 5, 4, false);
-        starBurst(c.x + tp.x * 1.08, c.y + (tp.y - 30) * 1.08, '#F7C948', 8, 4, true);
+        steamPuff(c.x + tp.x * 1.08, c.y + (tp.y - 30) * 1.08, 4, 4, false);
+        starBurst(c.x + tp.x * 1.08, c.y + (tp.y - 30) * 1.08, '#F7C948', 4, 4);
         return;
       }
     }
-    const dropFrom = -170;
     const tp = {
       id: topMeta.id,
       x: localX,
       y: localY,
       seed: Math.random() * 10,
       blownOut: false,
-      dropY: dropFrom,
+      dropY: 0,
       sx: 1,
       sy: 1,
     };
     dish.toppings.push(tp);
-    state.toppingSprings.push({
-      tp, y: dropFrom, vy: 0, sx: 1, sy: 1, vsx: 0, vsy: 0,
-      landed: false, justLanded: false, resting: false, bounces: 0, delay: delay || 0,
-    });
-    squashImpulse(1.1, 0.92);
+    squashImpulse(1.05, 0.95);
     sfx('sprinkle');
-    startPipingAnim('topping', localX, localY + dropFrom * 0.55, '#F7C948');
+    startPipingAnim('topping', localX, localY, '#F7C948');
     renderPrimaryActionButton();
   }
 
+  const RAINBOW_BALL_COLORS = ['#FF2A2A', '#FF8C1A', '#FFE619', '#1FD141', '#2986FF', '#8C2BFF'];
+  const ROSETTE_COLORS = ['#8C2BFF', '#2986FF', '#1FD141', '#FFE619', '#FF8C1A', '#FF2A2A'];
+
+  function handleDecorateAction(lx, ly, pt, isDrag) {
+    ensureDishHasBase();
+    state.turntableVel += isDrag ? 0.9 : 2.2;
+    state.turntableAngle += isDrag ? 0.08 : 0.22;
+    dish.turntableAngle = state.turntableAngle;
+    dish.cakeStyle = state.cakeStyle;
+
+    if (decorTool === 'sauce') {
+      if (!isDrag) {
+        const sMeta = KitchenData.SAUCES[sauceIdx] || KitchenData.SAUCES[0];
+        activeStroke = { color: sMeta.color, hi: sMeta.hi, pts: [{ x: lx, y: ly }] };
+        dish.sauces.push(activeStroke);
+        sfx('pour');
+        startPipingAnim('sauce', lx, ly, sMeta.color);
+      } else if (activeStroke) {
+        const prev = activeStroke.pts[activeStroke.pts.length - 1];
+        if (!prev || Math.hypot(prev.x - lx, prev.y - ly) > 8) {
+          activeStroke.pts.push({ x: lx, y: ly });
+        }
+      }
+      renderPrimaryActionButton();
+      return;
+    }
+
+    if (decorTool === 'topping') {
+      if (!isDrag) {
+        addToppingAt(lx, ly);
+      }
+      return;
+    }
+
+    // decorTool === 'piping'
+    if (state.cakeStyle === 'candy_balls') {
+      dish.candyBalls = dish.candyBalls || [];
+      const last = dish.candyBalls[dish.candyBalls.length - 1];
+      if (isDrag && last && Math.hypot(last.x - lx, last.y - ly) < 18) return;
+
+      const ballIdx = dish.candyBalls.length;
+      const col = RAINBOW_BALL_COLORS[ballIdx % RAINBOW_BALL_COLORS.length];
+      const ball = { x: lx, y: ly, color: col, angle: state.turntableAngle, index: ballIdx, scale: 1 };
+      dish.candyBalls.push(ball);
+      dish.candyBallCount = dish.candyBalls.length;
+      dish.toppings.push({ id: 'candy_balls', x: lx, y: ly, color: col, dropY: 0, sx: 1, sy: 1 });
+      dish.piping.push({ x: lx, y: ly, color: col, r: 14, scale: 1 });
+
+      if (!sfx('candyPop')) { if (!sfx('ballPlace')) sfx('popSelect', ballIdx % 6); }
+      spawnParticle({
+        x: pt.x + rand(-6, 6), y: pt.y + rand(-6, 6),
+        vx: rand(-10, 10), vy: rand(-10, 10),
+        r: rand(2, 3.5), color: col, kind: 'sparkle', life: 0.3, layer: 4,
+      });
+      startPipingAnim('candy', lx, ly, col);
+      renderPrimaryActionButton();
+    } else {
+      // 'rainbow_rosettes'
+      dish.rosettes = dish.rosettes || [];
+      const last = dish.rosettes[dish.rosettes.length - 1];
+      if (isDrag && last && Math.hypot(last.x - lx, last.y - ly) < 18) return;
+
+      const rosIdx = dish.rosettes.length;
+      const col = (KitchenData.PIPING_COLORS[pipingColorIdx] && KitchenData.PIPING_COLORS[pipingColorIdx].color) || ROSETTE_COLORS[rosIdx % ROSETTE_COLORS.length];
+      const ros = { x: lx, y: ly, color: col, r: 15, scale: 1 };
+      dish.rosettes.push(ros);
+      dish.rosetteCount = dish.rosettes.length;
+      dish.piping.push({ x: lx, y: ly, color: col, shadow: KitchenArt.darken(col, 0.25), hi: KitchenArt.lighten(col, 0.25), r: 15, scale: 1 });
+
+      if (!sfx('buttercreamSwoosh')) { if (!sfx('pipeCream')) sfx('popSelect', rosIdx % 6); }
+      spawnParticle({
+        x: pt.x + rand(-6, 6), y: pt.y + rand(-6, 6),
+        vx: rand(-8, 8), vy: rand(-8, 8),
+        r: rand(2, 3.5), color: col, kind: 'sparkle', life: 0.3, layer: 4,
+      });
+      startPipingAnim('piping', lx, ly, col);
+      renderPrimaryActionButton();
+    }
+  }
+
   function updateDecorate(dt) {
+    state.turntableAngle += state.turntableVel * dt;
+    state.turntableVel *= Math.exp(-4.5 * dt);
+    if (Math.abs(state.turntableVel) < 0.005) state.turntableVel = 0;
+    dish.turntableAngle = state.turntableAngle;
+    dish.cakeStyle = state.cakeStyle;
+
     const pa = state.pipingAnim;
     if (pa.active) {
-      pa.t = Math.min(1, pa.t + dt / 0.42);
-      pa.squeeze = Math.sin(Math.PI * Math.min(1, pa.t * 1.35));
-      pa.shake = pa.kind === 'topping' ? Math.sin(pa.t * 42) * 0.28 * (1 - pa.t) : 0;
+      pa.t = Math.min(1, pa.t + dt / 0.38);
+      pa.squeeze = Math.sin(Math.PI * Math.min(1, pa.t * 1.3));
+      pa.shake = 0;
       if (pa.t >= 1) {
         pa.active = false;
         pa.squeeze = 0;
         pa.shake = 0;
       }
     }
-    state.toolTilt = clamp(state.toolPos.vx * 0.0011, -0.35, 0.35);
+    state.toolTilt = clamp(state.toolPos.vx * 0.0008, -0.25, 0.25);
 
     for (let i = dollopPops.length - 1; i >= 0; i--) {
       const d = dollopPops[i];
@@ -1759,81 +1559,18 @@ const KitchenGame = (() => {
         d.sounded = true;
         sfx('pipeCream');
       }
-      if (tau > 1.0) {
+      if (tau > 0.4) {
         d.p.scale = 1;
         dollopPops.splice(i, 1);
       } else {
-        d.p.scale = Math.max(0, springPop(tau, 0.45, 19));
+        d.p.scale = 1;
       }
     }
-
-    const c = stationCenter(4), sc = 1.08;
-    const sp = state.toppingSprings;
-    for (let i = sp.length - 1; i >= 0; i--) {
-      const s = sp[i];
-      if (s.justLanded) {
-        s.justLanded = false;
-        if (stationVisible(4)) {
-          confettiBurst(c.x + s.tp.x * sc, c.y + s.tp.y * sc, 14, 4);
-          ringPulse(c.x + s.tp.x * sc, c.y + s.tp.y * sc + 4, 'rgba(255, 253, 249, 0.9)', 4, 12);
-        }
-        sfx('sparkle');
-      }
-      // Stretch while falling fast, then damped jelly squash on landing
-      const fall = s.landed ? 0 : Math.max(0, s.vy);
-      const stretchY = 1 + Math.min(0.25, fall * 0.00025);
-      const stretchX = 1 - Math.min(0.15, fall * 0.00015);
-      s.tp.dropY = s.y;
-      s.tp.sx = s.sx * stretchX;
-      s.tp.sy = s.sy * stretchY;
-      const settled = s.resting && Math.abs(s.sx - 1) < 0.003 && Math.abs(s.sy - 1) < 0.003 &&
-        Math.abs(s.vsx) < 0.05 && Math.abs(s.vsy) < 0.05;
-      if (settled) {
-        s.tp.dropY = 0;
-        s.tp.sx = 1;
-        s.tp.sy = 1;
-        sp.splice(i, 1);
-      }
-    }
+    state.toppingSprings = [];
   }
 
   function stepToppingSprings(h) {
-    const sp = state.toppingSprings;
-    for (let i = 0; i < sp.length; i++) {
-      const s = sp[i];
-      if (s.delay > 0) {
-        s.delay -= h;
-        continue;
-      }
-      if (!s.resting) {
-        s.vy += 2600 * h;
-        s.y += s.vy * h;
-        if (s.y >= 0) {
-          s.y = 0;
-          const impact = s.vy;
-          if (!s.landed) {
-            s.landed = true;
-            s.justLanded = true;
-          }
-          if (impact > 140 && s.bounces < 3) {
-            s.vy = -impact * 0.34;
-            s.bounces++;
-            const q = Math.min(0.42, impact * 0.00058);
-            s.vsy -= q * 22;
-            s.vsx += q * 18;
-          } else {
-            s.vy = 0;
-            s.resting = true;
-          }
-        }
-      }
-      const ax = (1 - s.sx) * 520 - s.vsx * 15;
-      const ay = (1 - s.sy) * 520 - s.vsy * 15;
-      s.vsx += ax * h;
-      s.vsy += ay * h;
-      s.sx += s.vsx * h;
-      s.sy += s.vsy * h;
-    }
+    state.toppingSprings = [];
   }
 
   /* ==========================================================================
@@ -2336,23 +2073,18 @@ const KitchenGame = (() => {
     state.mouthOpen += (target - state.mouthOpen) * (1 - Math.exp(-rate * dt));
     if (state.mouthOpen < 0.002) state.mouthOpen = 0;
 
-    // Gaze target: spoon > flying food > knife > tossed food > pointer
+    // Gaze target: spoon > knife > cake/turntable > pointer
     let lt = state.pointer;
     const off1 = layerOffset(1);
-    const off3 = layerOffset(3);
+    const off4 = layerOffset(4);
     const off5 = layerOffset(5);
     if ((fs.active || fork.dragging) && off5 !== null) {
       lt = { x: fs.x + off5, y: fs.y };
-    } else if (state.flyers.length) {
-      lt = flyerPos(state.flyers[state.flyers.length - 1]);
-    } else if (state.hopSlices.length) {
-      const h = state.hopSlices[0];
-      lt = { x: lerp(h.x0, h.x1, clamp01(h.p)), y: lerp(h.y0, h.y1, clamp01(h.p)) - 60 };
     } else if (state.knifeSlash.active && off1 !== null) {
       lt = { x: state.knifeSlash.pose.x + off1, y: state.knifeSlash.pose.y };
-    } else if (state.panToss.active && off3 !== null) {
-      const c3 = stationCenter(3);
-      lt = { x: c3.x + off3, y: c3.y - state.panToss.height * Math.sin(Math.PI * seg(state.panToss.t, TOSS_LAUNCH, 0.72)) };
+    } else if (station === 4 && off4 !== null) {
+      const c4 = stationCenter(4);
+      lt = { x: c4.x + off4, y: c4.y };
     }
     const f = 1 - Math.exp(-9 * dt);
     state.lookTarget.x += (lt.x - state.lookTarget.x) * f;
@@ -2463,7 +2195,11 @@ const KitchenGame = (() => {
     mixProgress = 0;
     panItems = [];
     cookProgress = 0;
+    state.turntableAngle = 0;
+    state.turntableVel = 0;
     dish = createFreshDish();
+    dish.cakeStyle = state.cakeStyle;
+    dish.turntableAngle = 0;
     state.scoopsShown = 0;
     state.bitesEaten = 0;
     state.reaction = null;
@@ -2625,9 +2361,7 @@ const KitchenGame = (() => {
       drawStationLayer(station, 0);
     }
 
-    // 5. Screen-space choreography: flying food, basket hops, hearts, confetti
-    drawFlyers(ctx);
-    drawHopSlices(ctx);
+    // 5. Screen-space choreography: gentle local sparkles, hearts, confetti
     drawParticles(ctx, 0);
     drawConfetti(ctx, 0);
     drawSlashTrail(ctx);
@@ -3335,18 +3069,29 @@ const KitchenGame = (() => {
   function renderDecorateStation(c) {
     const ctr = stationCenter(4);
     const cx = ctr.x, cy = ctr.y;
-    drawCanvasIconCard(c, 36, cy - 42, 118, 46, dish.vessel === 'plate', 'plate');
-    drawCanvasIconCard(c, 36, cy + 14, 118, 46, dish.vessel === 'cup', 'cup');
+    // Left sub-tool buttons: Style A (Candy Balls) vs Style B (Rainbow Rosettes)
+    drawCanvasIconCard(c, 36, cy - 42, 118, 46, state.cakeStyle === 'candy_balls', 'cupcake');
+    drawCanvasIconCard(c, 36, cy + 14, 118, 46, state.cakeStyle === 'rainbow_rosettes', 'piping');
 
     let toolColor = '#F7C948';
-    if (decorTool === 'piping') toolColor = (KitchenData.PIPING_COLORS[pipingColorIdx] || KitchenData.PIPING_COLORS[0]).color;
-    else if (decorTool === 'sauce') toolColor = (KitchenData.SAUCES[sauceIdx] || KitchenData.SAUCES[0]).color;
+    if (decorTool === 'piping') {
+      if (state.cakeStyle === 'candy_balls') {
+        const idx = (dish.candyBalls && dish.candyBalls.length) || 0;
+        toolColor = RAINBOW_BALL_COLORS[idx % RAINBOW_BALL_COLORS.length];
+      } else {
+        toolColor = (KitchenData.PIPING_COLORS[pipingColorIdx] || KitchenData.PIPING_COLORS[0]).color;
+      }
+    } else if (decorTool === 'sauce') {
+      toolColor = (KitchenData.SAUCES[sauceIdx] || KitchenData.SAUCES[0]).color;
+    }
     const pa = state.pipingAnim;
     const near = Math.hypot(hoverPt.x - cx, hoverPt.y - cy) < 165;
     const s = {
       station: 4,
       dish,
       decorTool,
+      cakeStyle: state.cakeStyle,
+      turntableAngle: state.turntableAngle,
       pipingAnim: {
         active: pa.active,
         t: pa.t,
@@ -3355,7 +3100,7 @@ const KitchenGame = (() => {
         color: pa.color,
         kind: pa.kind,
         squeeze: pa.squeeze,
-        shake: pa.shake,
+        shake: 0,
       },
       toppingSprings: dish.toppings.map(tp => ({ y: tp.dropY || 0, scaleX: tp.sx || 1, scaleY: tp.sy || 1 })),
       hoverPt: { x: state.toolPos.x, y: state.toolPos.y },
@@ -3634,8 +3379,22 @@ const KitchenGame = (() => {
       }
     } else if (station === 4) {
       if (pt.x >= 32 && pt.x <= 160) {
-        if (pt.y >= cy - 44 && pt.y <= cy + 8) { dish.vessel = 'plate'; squashImpulse(1.12, 0.9); return; }
-        if (pt.y >= cy + 12 && pt.y <= cy + 64) { dish.vessel = 'cup'; squashImpulse(1.12, 0.9); return; }
+        if (pt.y >= cy - 44 && pt.y <= cy + 8) {
+          state.cakeStyle = 'candy_balls';
+          dish.cakeStyle = 'candy_balls';
+          dish.vessel = 'plate';
+          squashImpulse(1.12, 0.9);
+          sfx('popSelect', 1);
+          return;
+        }
+        if (pt.y >= cy + 12 && pt.y <= cy + 64) {
+          state.cakeStyle = 'rainbow_rosettes';
+          dish.cakeStyle = 'rainbow_rosettes';
+          dish.vessel = 'plate';
+          squashImpulse(1.12, 0.9);
+          sfx('popSelect', 2);
+          return;
+        }
       }
       const lx = (pt.x - cx) / 1.08;
       const ly = (pt.y - cy) / 1.08;
@@ -3648,18 +3407,8 @@ const KitchenGame = (() => {
           return;
         }
       }
-      if (Math.hypot(lx, ly) < 130) {
-        if (decorTool === 'piping') {
-          addPipingPoint(lx, ly);
-        } else if (decorTool === 'sauce') {
-          const sMeta = KitchenData.SAUCES[sauceIdx] || KitchenData.SAUCES[0];
-          activeStroke = { color: sMeta.color, hi: sMeta.hi, pts: [{ x: lx, y: ly }] };
-          dish.sauces.push(activeStroke);
-          sfx('pour');
-          startPipingAnim('sauce', lx, ly, sMeta.color);
-        } else if (decorTool === 'topping') {
-          addToppingAt(lx, ly);
-        }
+      if (Math.hypot(lx, ly) < 135) {
+        handleDecorateAction(lx, ly, pt, false);
       }
     } else if (station === 5) {
       spoonGrab = { x: pt.x, y: pt.y, startedDrag: false };
@@ -3699,21 +3448,8 @@ const KitchenGame = (() => {
     } else if (station === 4) {
       const lx = (pt.x - cx) / 1.08;
       const ly = (pt.y - cy) / 1.08;
-      if (Math.hypot(lx, ly) < 125) {
-        if (decorTool === 'piping') {
-          addPipingPoint(lx, ly);
-        } else if (decorTool === 'sauce' && activeStroke) {
-          const prev = activeStroke.pts[activeStroke.pts.length - 1];
-          if (!prev || Math.hypot(prev.x - lx, prev.y - ly) > 8) {
-            activeStroke.pts.push({ x: lx, y: ly });
-            if (Math.random() < 0.3) {
-              spawnParticle({
-                x: pt.x, y: pt.y, vx: rand(-30, 30), vy: rand(-60, -10), g: 700, drag: 1,
-                r: rand(2.5, 4), color: activeStroke.color, kind: 'droplet', life: 0.45, layer: 4,
-              });
-            }
-          }
-        }
+      if (Math.hypot(lx, ly) < 135) {
+        handleDecorateAction(lx, ly, pt, true);
       }
     } else if (station === 5 && spoonGrab) {
       if (!spoonGrab.startedDrag && !fork.dragging && Math.hypot(pt.x - spoonGrab.x, pt.y - spoonGrab.y) > 14) {
@@ -4041,13 +3777,12 @@ const KitchenGame = (() => {
         setStation(4);
       } else flipPan();
     } else if (station === 4) {
-      if (dish.piping.length === 0 && dish.toppings.length === 0) {
-        let i = 0;
-        for (let a = 0; a < PI2; a += PI2 / 8) {
-          addPipingPoint(Math.cos(a) * 52, Math.sin(a) * 34 - 16, i * 0.06);
-          i++;
+      if (dish.piping.length === 0 && dish.toppings.length === 0 && (!dish.candyBalls || dish.candyBalls.length === 0) && (!dish.rosettes || dish.rosettes.length === 0)) {
+        const pt = stationCenter(4);
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * PI2;
+          handleDecorateAction(Math.cos(a) * 55, Math.sin(a) * 35 - 12, { x: pt.x + Math.cos(a) * 55, y: pt.y + Math.sin(a) * 35 - 12 }, false);
         }
-        addToppingAt(0, -24, 0.45);
       }
       setStation(5);
     } else if (station === 5) {
@@ -4180,6 +3915,10 @@ const KitchenGame = (() => {
       bowlTilt: state.bowlTilt,
       mixSwirlAngle: state.mixSwirlAngle,
       panToss: { active: pt.active, t: pt.t, height: pt.height, panDy: pt.panDy, panTilt: pt.panTilt, bodies: pt.plan.length },
+      turntableAngle: state.turntableAngle,
+      cakeStyle: state.cakeStyle,
+      candyBalls: (dish.candyBalls || []).length,
+      rosettes: (dish.rosettes || []).length,
       pipingAnim: { active: state.pipingAnim.active, t: state.pipingAnim.t, kind: state.pipingAnim.kind },
       toppingSprings: state.toppingSprings.length,
       flyingSpoon: { active: fs.active, t: fs.t, phase: fs.phase, x: fs.x, y: fs.y, angle: fs.angle, loaded: fs.loaded, endX: fs.endX, endY: fs.endY },
@@ -4206,6 +3945,11 @@ const KitchenGame = (() => {
     chopBoardItem,
     stirMixer,
     flipPan,
+    setCookMode: m => {
+      cookMode = (m === 'oven' ? 'oven' : 'pan');
+      renderPrimaryActionButton();
+      return cookMode;
+    },
     feedBite,
     feedOneBite,
     resetKitchenForNewDish,
