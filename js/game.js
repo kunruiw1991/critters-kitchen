@@ -4,17 +4,17 @@ const KitchenGame = (() => {
   const W = 960, H = 560;
   let canvas, ctx;
   let t = 0, lastTs = 0;
-  
+
   let state = {
     stage: 1,
-    station: 1, // for art.js
-    friend: 'bobby', // for art.js critter
+    station: 1,
+    friend: 'bobby',
     dish: {
       items: [],
-      batterTint: '#ffccaa',
-      layerColors: ['#ffccaa', '#ffbb99'],
-      frostingColor: '#ffffff',
-      glazeColor: '#ffbb99',
+      batterTint: '#ff99bb',
+      layerColors: ['#ff99bb', '#ffe878', '#9be858'],
+      frostingColor: '#fff8f2',
+      glazeColor: '#ff3366',
       isCocoa: false,
       candyBalls: [],
       rosettes: [],
@@ -22,80 +22,94 @@ const KitchenGame = (() => {
       slicedWedge: false,
       bitesTaken: 0
     },
-    // Stage 1
-    boardItem: null, // old
-    activeIngredient: null, // for art.js string id
+    boardItem: { id: 'strawberry', cuts: 0 },
+    activeIngredient: 'strawberry',
     cuts: 0,
-    slicedIngredients: [], // for art.js string ids
+    slicedIngredients: [],
     sliceTrail: null,
-    
-    // Stage 2
+
     eggAdded: false,
     milkAdded: false,
     fruitAdded: false,
     mixProgress: 0,
     whiskAngle: 0,
-    mixAngle: 0, // for art.js
-    
-    // Stage 3
+    mixAngle: 0,
+
     bakeProgress: 0,
-    
-    // Stage 4
+
     activeTool: 'piping',
     spoonDrag: null,
     feedAnim: 0,
     critterMood: 'neutral',
-    bitesTaken: 0, // for art.js
-    slicedWedge: false, // for art.js
+    bitesTaken: 0,
+    slicedWedge: false,
 
-    // Hitboxes (populated by KitchenArt)
     tableIngredientHitboxes: {},
     tableHelperHitboxes: {},
     tableToolHitboxes: {},
     nextBtnHitbox: null,
-    boardHitbox: null,
-    glassBowlHitbox: null,
-    ovenHitbox: null,
-    cakeHitbox: null,
-    critterHitbox: null,
+    boardHitbox: { x: 265, y: 267, w: 430, h: 200 },
+    glassBowlHitbox: { x: 305, y: 237, w: 350, h: 250, r: 165 },
+    ovenHitbox: { x: 245, y: 187, w: 470, h: 310, r: 220 },
+    cakeHitbox: { x: 320, y: 191, w: 290, h: 220, r: 145 },
+    critterHitbox: { x: 365, y: 15, w: 230, h: 255, cx: 480, cy: 150, r: 112 },
 
-    pointer: {x: 0, y: 0, isDown: false, dx: 0, dy: 0, swipeDist: 0}
+    pointer: { x: 0, y: 0, isDown: false, dx: 0, dy: 0, swipeDist: 0 }
   };
 
+  let viewState = { vw: W, vh: H, scale: 1, ox: 0, oy: 0 };
+
   let critterIndex = 0;
+
+  function populateDefaultHitboxes() {
+    state.boardHitbox = { x: 265, y: 267, w: 430, h: 200 };
+    state.glassBowlHitbox = { x: 305, y: 237, w: 350, h: 250, r: 165 };
+    state.ovenHitbox = { x: 245, y: 187, w: 470, h: 310, r: 220 };
+    state.cakeHitbox = { x: 320, y: 191, w: 290, h: 220, r: 145 };
+    state.critterHitbox = { x: 365, y: 15, w: 230, h: 255, cx: 480, cy: 150, r: 112 };
+  }
 
   function init(canvasEl) {
     if (!canvasEl) canvasEl = document.getElementById('kitchenCanvas');
     if (!canvasEl) return;
     canvas = canvasEl;
     ctx = canvas.getContext('2d', { alpha: false });
-    
+
+    const view = { vw: W, vh: H, scale: 1, ox: 0, oy: 0 };
+
     const resize = () => {
       const parent = canvas.parentElement || document.body;
-      const aspect = W / H;
-      const pw = parent.clientWidth, ph = parent.clientHeight;
-      let cw = pw, ch = pw / aspect;
-      if (ch > ph) { ch = ph; cw = ph * aspect; }
-      canvas.style.width = cw + 'px';
-      canvas.style.height = ch + 'px';
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = W * dpr;
-      canvas.height = H * dpr;
-      ctx.scale(dpr, dpr);
+      const pw = parent.clientWidth || window.innerWidth;
+      const ph = parent.clientHeight || window.innerHeight;
+      canvas.style.width = pw + 'px';
+      canvas.style.height = ph + 'px';
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = pw * dpr;
+      canvas.height = ph * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      viewState.vw = pw;
+      viewState.vh = ph;
+      viewState.scale = Math.min(pw / W, (ph - 96) / (H - 80));
+      viewState.ox = (pw - W * viewState.scale) * 0.5;
+      viewState.oy = Math.max(8, (ph - 96 - H * viewState.scale) * 0.52);
     };
     window.addEventListener('resize', resize);
     resize();
-    
+
     const attachPointer = (e) => {
       const rect = canvas.getBoundingClientRect();
-      const scaleX = W / rect.width;
-      const scaleY = H / rect.height;
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
       const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+      return {
+        x: (clientX - rect.left - viewState.ox) / viewState.scale,
+        y: (clientY - rect.top - viewState.oy) / viewState.scale
+      };
     };
 
     canvas.addEventListener('pointerdown', e => {
+      if (e.isTrusted && window.KitchenAudio && window.KitchenAudio.unlock) {
+        window.KitchenAudio.unlock();
+      }
       state.pointer.isDown = true;
       const pt = attachPointer(e);
       state.pointer.x = pt.x;
@@ -113,27 +127,39 @@ const KitchenGame = (() => {
       state.pointer.y = pt.y;
       handlePointerMove(pt.x, pt.y);
     });
-    window.addEventListener('pointerup', e => {
+    window.addEventListener('pointerup', () => {
       state.pointer.isDown = false;
       handlePointerUp(state.pointer.x, state.pointer.y);
     });
 
-    // Hook up dock buttons
     document.querySelectorAll('.stage-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        if (e.isTrusted && window.KitchenAudio && window.KitchenAudio.unlock) {
+          window.KitchenAudio.unlock();
+        }
         setStage(parseInt(btn.dataset.stage, 10));
       });
     });
 
     document.getElementById('resetBtn')?.addEventListener('click', () => resetDish());
-    
-    document.getElementById('critterBtn')?.addEventListener('click', () => {
+
+    const critterBtn = document.getElementById('critterBtn');
+    critterBtn?.addEventListener('click', (e) => {
+      if (e.isTrusted && window.KitchenAudio && window.KitchenAudio.unlock) {
+        window.KitchenAudio.unlock();
+      }
       if (window.KitchenData && window.KitchenData.critters) {
         critterIndex = (critterIndex + 1) % window.KitchenData.critters.length;
-        state.friend = window.KitchenData.critters[critterIndex].id;
+        const c = window.KitchenData.critters[critterIndex];
+        state.friend = c.id;
+        critterBtn.style.backgroundImage = `url('assets/sprites/${c.spritePrefix}_happy.png')`;
+        if (window.KitchenAudio && window.KitchenAudio.playKalimbaChime) {
+          window.KitchenAudio.playKalimbaChime();
+        }
       }
     });
 
+    setStage(1);
     lastTs = performance.now();
     requestAnimationFrame(tick);
   }
@@ -146,8 +172,9 @@ const KitchenGame = (() => {
   }
   function checkHitbox(x, y, hb) {
     if (!hb) return false;
-    if (hb.w && hb.h) return inRect(x, y, hb.x, hb.y, hb.w, hb.h);
-    if (hb.r) return inCircle(x, y, hb.x, hb.y, hb.r);
+    if (hb.w && hb.h && inRect(x, y, hb.x, hb.y, hb.w, hb.h)) return true;
+    if (hb.r && hb.cx !== undefined && inCircle(x, y, hb.cx, hb.cy, hb.r)) return true;
+    if (hb.r && hb.x !== undefined && hb.w !== undefined && inCircle(x, y, hb.x + hb.w / 2, hb.y + hb.h / 2, hb.r)) return true;
     return false;
   }
 
@@ -160,10 +187,13 @@ const KitchenGame = (() => {
     if (state.stage === 1) {
       if (state.tableIngredientHitboxes) {
         for (const [id, hb] of Object.entries(state.tableIngredientHitboxes)) {
-          hb.id = id;
           if (checkHitbox(x, y, hb)) {
-            state.boardItem = {id: hb.id, cuts: 0};
-            state.boardItem.cuts = 0;
+            state.boardItem = { id, cuts: 0 };
+            state.activeIngredient = id;
+            state.cuts = 0;
+            if (window.KitchenAudio && window.KitchenAudio.playPipingSquish) {
+              window.KitchenAudio.playPipingSquish();
+            }
             return;
           }
         }
@@ -176,18 +206,21 @@ const KitchenGame = (() => {
     } else if (state.stage === 2) {
       if (state.tableHelperHitboxes) {
         for (const [id, hb] of Object.entries(state.tableHelperHitboxes)) {
-          hb.id = id;
           if (checkHitbox(x, y, hb)) {
-            if (hb.id === 'egg' && !state.eggAdded) {
+            if (id === 'egg' && !state.eggAdded) {
               state.eggAdded = true;
               if (window.KitchenAudio) window.KitchenAudio.playEggCrack();
+              return;
             }
-            if (hb.id === 'milk' && !state.milkAdded) {
+            if (id === 'milk' && !state.milkAdded) {
               state.milkAdded = true;
               if (window.KitchenAudio) window.KitchenAudio.playMilkPour();
+              return;
             }
-            if ((hb.id === "fruit" || hb.id === "slicedFruitBowl") && !state.fruitAdded) {
+            if ((id === 'fruit' || id === 'slicedFruitBowl') && !state.fruitAdded) {
               state.fruitAdded = true;
+              if (window.KitchenAudio) window.KitchenAudio.playCandyClink();
+              return;
             }
           }
         }
@@ -202,21 +235,28 @@ const KitchenGame = (() => {
     } else if (state.stage === 4) {
       if (state.tableToolHitboxes) {
         for (const [id, hb] of Object.entries(state.tableToolHitboxes)) {
-          hb.id = (id === "pipingBag" || id === "piping") ? "piping" : ((id === "candyBowl" || id === "candy") ? "candy" : ((id === "cakeKnife" || id === "knife") ? "knife" : "spoon"));
+          const normId = (id === 'pipingBag' || id === 'piping')
+            ? 'piping'
+            : ((id === 'candyBowl' || id === 'candy')
+              ? 'candy'
+              : ((id === 'cakeKnife' || id === 'knife') ? 'knife' : 'spoon'));
           if (checkHitbox(x, y, hb)) {
-            state.activeTool = hb.id;
+            state.activeTool = normId;
+            if (normId === 'spoon') {
+              state.spoonDrag = { x, y };
+            }
             return;
           }
         }
       }
       if (state.cakeHitbox && checkHitbox(x, y, state.cakeHitbox)) {
         if (state.activeTool === 'piping') {
-          state.dish.rosettes.push({x: x, y: y, color: state.dish.frostingColor});
+          state.dish.rosettes.push({ x, y, color: state.dish.frostingColor });
           if (window.KitchenAudio) window.KitchenAudio.playPipingSquish();
         } else if (state.activeTool === 'candy') {
-          state.dish.candyBalls.push({x: x, y: y, seed: state.dish.candyBalls.length});
+          state.dish.candyBalls.push({ x, y, seed: state.dish.candyBalls.length });
           if (state.dish.items.length > 0) {
-             state.dish.toppings.push({id: state.dish.items[0].id, x: x, y: y});
+            state.dish.toppings.push({ id: state.dish.items[0].id, x, y });
           }
           if (window.KitchenAudio) window.KitchenAudio.playCandyClink();
         } else if (state.activeTool === 'knife') {
@@ -224,10 +264,13 @@ const KitchenGame = (() => {
           state.dish.slicedWedge = true;
           if (window.KitchenAudio) window.KitchenAudio.playCakeSlice();
         } else if (state.activeTool === 'spoon') {
-          if (state.dish.slicedWedge && state.feedAnim === 0) {
-            state.spoonDrag = {x, y};
-          }
+          state.slicedWedge = true;
+          state.dish.slicedWedge = true;
+          state.spoonDrag = { x, y };
         }
+      }
+      if (state.activeTool === 'spoon' && x > 550 && x < 770 && y > 330 && y < 495) {
+        state.spoonDrag = { x, y };
       }
       if (state.critterHitbox && checkHitbox(x, y, state.critterHitbox)) {
         if (state.activeTool === 'spoon' && state.dish.slicedWedge) {
@@ -239,14 +282,14 @@ const KitchenGame = (() => {
 
   function handlePointerMove(x, y) {
     if (state.stage === 1) {
-      if (state.boardItem && state.boardItem.cuts < 3 && state.pointer.swipeDist > 40) {
+      if (state.boardItem && state.boardItem.cuts < 3 && state.pointer.swipeDist > 34) {
         if (state.boardHitbox && checkHitbox(x, y, state.boardHitbox)) {
           cutBoardItem(x, y);
           state.pointer.swipeDist = 0;
         }
       }
     } else if (state.stage === 2) {
-      if (state.glassBowlHitbox && checkHitbox(x, y, state.glassBowlHitbox) && state.pointer.swipeDist > 20) {
+      if (state.glassBowlHitbox && checkHitbox(x, y, state.glassBowlHitbox) && state.pointer.swipeDist > 16) {
         whiskStep();
         state.pointer.swipeDist = 0;
       }
@@ -263,57 +306,74 @@ const KitchenGame = (() => {
   }
 
   function handlePointerUp(x, y) {
-    state.spoonDrag = null;
-    if (state.stage === 1) {
-       if (state.sliceTrail) state.sliceTrail.active = false;
+    if (state.stage === 4 && state.spoonDrag) {
+      if (state.critterHitbox && checkHitbox(x, y, state.critterHitbox)) {
+        feedCritter();
+      }
+      state.spoonDrag = null;
     }
   }
 
   function cutBoardItem(x, y) {
+    if (!state.boardItem) return;
     state.boardItem.cuts++;
-    state.sliceTrail = { active: true, p1: {x: x - state.pointer.dx * 2, y: y - state.pointer.dy * 2}, p2: {x, y}, alpha: 1.0 };
-    if(window.KitchenAudio) window.KitchenAudio.playWoodChop();
+    state.cuts = state.boardItem.cuts;
+    state.sliceTrail = {
+      active: true,
+      p1: { x: x - 45, y: y - 35 },
+      p2: { x: x + 45, y: y + 35 },
+      alpha: 1.0
+    };
+    if (window.KitchenAudio) window.KitchenAudio.playWoodChop();
     if (state.boardItem.cuts >= 3) {
-      state.slicedIngredients.push(state.boardItem.id);
-      state.dish.items.push({id: state.boardItem.id, sliced: true});
+      const fid = state.boardItem.id;
+      state.slicedIngredients.push(fid);
+      state.dish.items.push({ id: fid, sliced: true });
       recomputeDishPalette();
-      state.boardItem = null;
+      const nextOrder = ['strawberry', 'banana', 'kiwi', 'blueberry', 'peach', 'cocoa'];
+      const nextId = nextOrder.find(k => !state.slicedIngredients.includes(k));
+      state.boardItem = nextId ? { id: nextId, cuts: 0 } : null;
     }
   }
 
   function whiskStep() {
-    state.mixProgress += 0.05;
-    state.whiskAngle += 1;
+    state.mixProgress = Math.min(1, state.mixProgress + 0.06);
+    state.whiskAngle += 0.85;
     state.mixAngle = state.whiskAngle;
-    if (state.mixProgress > 1) state.mixProgress = 1;
-    if(window.KitchenAudio && Math.random() < 0.2) window.KitchenAudio.playWhiskSwirl();
+    if (window.KitchenAudio && Math.random() < 0.25) window.KitchenAudio.playWhiskSwirl();
   }
 
   function bakeStep() {
-    state.bakeProgress += 0.5;
+    state.bakeProgress = Math.min(1, state.bakeProgress + 0.5);
     if (state.bakeProgress >= 1) {
-      state.bakeProgress = 1;
-      if(window.KitchenAudio) window.KitchenAudio.playOvenDing();
+      if (window.KitchenAudio) window.KitchenAudio.playOvenDing();
     }
   }
-  
+
   function feedCritter() {
-    state.feedAnim = 1.0;
+    state.feedAnim = 1.4;
     state.bitesTaken++;
     state.dish.bitesTaken++;
     state.critterMood = 'ecstatic';
     if (window.KitchenAudio) {
       window.KitchenAudio.playHappyChomp();
-      setTimeout(() => window.KitchenAudio.playKalimbaChime(), 800);
+      setTimeout(() => {
+        if (window.KitchenAudio) window.KitchenAudio.playKalimbaChime();
+      }, 450);
     }
   }
 
   function setStage(st) {
     state.stage = Math.max(1, Math.min(4, st));
-    state.station = state.stage; // mirror to art.js
+    state.station = state.stage;
+    populateDefaultHitboxes();
     if (state.stage > 1 && state.dish.items.length === 0) {
-      state.slicedIngredients.push('strawberry');
-      state.dish.items = [{id: 'strawberry', sliced: true}];
+      state.slicedIngredients = ['strawberry', 'banana', 'kiwi'];
+      state.dish.items = [
+        { id: 'strawberry', sliced: true },
+        { id: 'banana', sliced: true },
+        { id: 'kiwi', sliced: true }
+      ];
       recomputeDishPalette();
     }
     if (state.stage === 4) {
@@ -323,10 +383,13 @@ const KitchenGame = (() => {
     document.querySelectorAll('.stage-btn').forEach(b => {
       b.classList.toggle('active', parseInt(b.dataset.stage, 10) === state.stage);
     });
+    if (ctx && window.KitchenArt && window.KitchenArt.drawFrame) {
+      window.KitchenArt.drawFrame(ctx, W, H, state, t, viewState);
+    }
   }
 
   function recomputeDishPalette() {
-    if(window.KitchenData && window.KitchenData.paletteFor) {
+    if (window.KitchenData && window.KitchenData.paletteFor) {
       const ids = state.dish.items.map(it => it.id);
       const pal = window.KitchenData.paletteFor(ids);
       state.dish.batterTint = pal.batterTint;
@@ -338,25 +401,21 @@ const KitchenGame = (() => {
   }
 
   function tick(ts) {
-    const dt = (ts - lastTs) / 1000;
+    const dt = Math.min(0.05, (ts - lastTs) / 1000);
     lastTs = ts;
     t += dt;
 
     if (state.feedAnim > 0) {
-      state.feedAnim -= dt * 0.5;
+      state.feedAnim -= dt * 0.45;
       if (state.feedAnim < 0) state.feedAnim = 0;
     }
     if (state.sliceTrail && state.sliceTrail.active) {
-      state.sliceTrail.alpha -= dt * 2;
+      state.sliceTrail.alpha -= dt * 2.2;
       if (state.sliceTrail.alpha <= 0) state.sliceTrail.active = false;
     }
 
     if (window.KitchenArt && window.KitchenArt.drawFrame) {
-      window.KitchenArt.drawFrame(ctx, W, H, state, t);
-    } else {
-      ctx.fillStyle = '#fffdf9';
-      ctx.fillRect(0, 0, W, H);
-      ctx.beginPath(); ctx.moveTo(-5, -10); ctx.lineTo(10, 0); ctx.lineTo(-5, 10); ctx.fill();
+      window.KitchenArt.drawFrame(ctx, W, H, state, t, viewState);
     }
 
     requestAnimationFrame(tick);
@@ -364,16 +423,25 @@ const KitchenGame = (() => {
 
   function resetDish() {
     state.dish = {
-      items: [], batterTint: '#ffccaa', layerColors: ['#ffccaa', '#ffbb99'],
-      frostingColor: '#ffffff', candyBalls: [], rosettes: [], toppings: [],
-      slicedWedge: false, bitesTaken: 0
+      items: [],
+      batterTint: '#ff99bb',
+      layerColors: ['#ff99bb', '#ffe878', '#9be858'],
+      frostingColor: '#fff8f2',
+      glazeColor: '#ff3366',
+      isCocoa: false,
+      candyBalls: [],
+      rosettes: [],
+      toppings: [],
+      slicedWedge: false,
+      bitesTaken: 0
     };
-    state.boardItem = null;
-    state.boardItem.cuts = 0;
+    state.boardItem = { id: 'strawberry', cuts: 0 };
+    state.activeIngredient = 'strawberry';
+    state.cuts = 0;
     state.slicedIngredients = [];
     state.sliceTrail = null;
     state.eggAdded = false;
-    state.milkAdded = false;
+    state.milkAdded = false,
     state.fruitAdded = false;
     state.mixProgress = 0;
     state.bakeProgress = 0;
@@ -384,15 +452,20 @@ const KitchenGame = (() => {
     setStage(1);
   }
 
-  return { 
-    init, 
-    getState: () => state, 
-    getDishState: () => state.dish, 
-    setStage, 
-    setStation: setStage, 
-    selectIngredient: (id) => { state.boardItem = {id, cuts: 0}; state.activeIngredient = id; state.cuts = 0; },
-    selectTool: (tool) => { state.activeTool = tool; }, 
-    resetDish 
+  return {
+    init,
+    getState: () => state,
+    getDishState: () => state.dish,
+    getViewState: () => viewState,
+    setStage,
+    setStation: setStage,
+    selectIngredient: (id) => {
+      state.boardItem = { id, cuts: 0 };
+      state.activeIngredient = id;
+      state.cuts = 0;
+    },
+    selectTool: (tool) => { state.activeTool = tool; },
+    resetDish
   };
 })();
 

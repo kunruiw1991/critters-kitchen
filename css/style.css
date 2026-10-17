@@ -4,7 +4,7 @@ html, body {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background-color: #FFF6EC;
+  background-color: #2A1B12;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
@@ -13,7 +13,8 @@ html, body {
 #kitchenCanvas {
   display: block;
   width: 100vw;
-  height: calc(100vh - 104px);
+  height: 100vh;
+  margin: 0 auto;
 }
 
 button {
@@ -26,70 +27,91 @@ button {
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
-  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.22s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:hover {
+  transform: scale(1.07);
 }
 
 button:active {
-  transform: scale(0.9);
+  transform: scale(0.91);
 }
 
 #critterBtn {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  width: 80px;
-  height: 80px;
+  top: 14px;
+  left: 16px;
+  width: 84px;
+  height: 84px;
   border-radius: 50%;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  background-color: #fff;
-  background-image: url('../icons/bobby.jpg'); 
+  background-color: #FFF8EE;
+  border: 4px solid #FFE0B2;
+  box-shadow: 0 8px 20px rgba(45, 20, 5, 0.35), inset 0 2px 6px rgba(255, 255, 255, 0.9);
+  background-image: url('../assets/sprites/chef_bobby_happy.png');
+  background-size: 86%;
+  background-position: center 6px;
+  z-index: 20;
 }
 
 #resetBtn {
   position: absolute;
   top: 14px;
-  right: 14px;
-  width: 76px;
-  height: 76px;
+  right: 16px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  background-color: #fff;
-  background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="40" fill="%23f0f0f0" stroke="%23ccc" stroke-width="4"/><path d="M50 20 L55 40 L75 45 L55 50 L50 70 L45 50 L25 45 L45 40 Z" fill="%23ffdd55"/></svg>');
+  background: radial-gradient(circle at 35% 30%, #FFFDF5 0%, #FFE082 65%, #FFB300 100%);
+  border: 4px solid #FFF8E1;
+  box-shadow: 0 8px 20px rgba(45, 20, 5, 0.35), inset 0 3px 8px rgba(255, 255, 255, 0.9);
+  background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="g" cx="35%" cy="30%" r="70%"><stop offset="0%" stop-color="%23FFFDE7"/><stop offset="55%" stop-color="%23FFD54F"/><stop offset="100%" stop-color="%23FF8F00"/></radialGradient></defs><circle cx="50" cy="50" r="44" fill="url(%23g)"/><path d="M50 14 L59 37 L84 40 L65 56 L70 81 L50 68 L30 81 L35 56 L16 40 L41 37 Z" fill="%23FFFFFF" stroke="%23FF6F00" stroke-width="3" stroke-linejoin="round"/><circle cx="26" cy="24" r="5" fill="%23FFFFFF"/><circle cx="76" cy="26" r="4" fill="%23FFFFFF"/></svg>');
+  z-index: 20;
 }
 
 #bottomDock {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100vw;
-  height: 104px;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(520px, 92vw);
+  height: 96px;
   display: flex;
   justify-content: space-evenly;
   align-items: center;
-  background-color: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(8px);
-  box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+  background: linear-gradient(180deg, rgba(255, 248, 238, 0.88) 0%, rgba(255, 232, 208, 0.94) 100%);
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  border-radius: 52px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 28px rgba(40, 18, 5, 0.38), inset 0 2px 6px rgba(255, 255, 255, 0.95);
+  z-index: 20;
 }
 
 .stage-btn {
   width: 84px;
   height: 84px;
   border-radius: 50%;
-  background-color: #fff;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  background-color: transparent;
+  background-size: 98%;
+  filter: drop-shadow(0 5px 10px rgba(60, 25, 10, 0.25));
+}
+
+.stage-btn.active {
+  transform: translateY(-8px) scale(1.1);
+  filter: drop-shadow(0 10px 16px rgba(255, 105, 135, 0.55)) drop-shadow(0 0 10px rgba(255, 230, 128, 0.9));
 }
 
 .stage-btn[data-stage="1"] {
-  background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="45" width="60" height="10" fill="%23999"/><circle cx="50" cy="50" r="20" fill="%23ff5555"/></svg>');
+  background-image: url('../assets/sprites/icon_stage1.png');
 }
 .stage-btn[data-stage="2"] {
-  background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M20 30 Q50 90 80 30 Z" fill="%23aaa"/><line x1="50" y1="10" x2="50" y2="50" stroke="%23555" stroke-width="4"/></svg>');
+  background-image: url('../assets/sprites/icon_stage2.png');
 }
 .stage-btn[data-stage="3"] {
-  background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="30" width="60" height="50" rx="10" fill="%23aaffaa"/><circle cx="50" cy="55" r="15" fill="%23555"/></svg>');
+  background-image: url('../assets/sprites/icon_stage3.png');
 }
 .stage-btn[data-stage="4"] {
-  background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><ellipse cx="50" cy="80" rx="40" ry="10" fill="%23ccc"/><rect x="30" y="40" width="40" height="30" fill="%23ffddaa"/></svg>');
+  background-image: url('../assets/sprites/icon_stage4.png');
 }
 
 * {

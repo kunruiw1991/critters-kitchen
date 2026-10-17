@@ -1,1074 +1,941 @@
-window.KitchenArt = (function() {
-    const CACHE = {};
-    const IMAGES = {};
-    let initialized = false;
+'use strict';
 
-    function loadImages() {
-        if (initialized) return;
-        const friends = ['bobby', 'craftycorn', 'catnap', 'dogday', 'hoppy', 'picky', 'bubba', 'kickin'];
-        friends.forEach(f => {
-            const img = new Image();
-            img.src = `icons/${f}.jpg`;
-            IMAGES[f] = img;
-        });
-        document.querySelectorAll('.stage-btn').forEach(btn => {
-            const c = document.createElement('canvas');
-            c.width = 84; c.height = 84;
-            window.KitchenArt.drawButtonIcon(c, 'stage' + btn.dataset.stage);
-            btn.style.backgroundImage = 'url(' + c.toDataURL() + ')';
-        });
-        initialized = true;
+window.KitchenArt = (() => {
+  const SPRITE_FILES = {
+    bg: 'assets/studio_bg.jpg',
+    chef_bobby_happy: 'assets/sprites/chef_bobby_happy.png',
+    chef_bobby_eat: 'assets/sprites/chef_bobby_eat.png',
+    chef_bobby_yay: 'assets/sprites/chef_bobby_yay.png',
+    chef_catnap_happy: 'assets/sprites/chef_catnap_happy.png',
+    chef_catnap_yay: 'assets/sprites/chef_catnap_yay.png',
+    chef_dogday_happy: 'assets/sprites/chef_dogday_happy.png',
+    chef_dogday_yay: 'assets/sprites/chef_dogday_yay.png',
+    cutting_board: 'assets/sprites/cutting_board.png',
+    chef_knife: 'assets/sprites/chef_knife.png',
+    bowl_strawberry: 'assets/sprites/bowl_strawberry.png',
+    bowl_banana: 'assets/sprites/bowl_banana.png',
+    bowl_kiwi: 'assets/sprites/bowl_kiwi.png',
+    bowl_blueberry: 'assets/sprites/bowl_blueberry.png',
+    bowl_peach: 'assets/sprites/bowl_peach.png',
+    bowl_cocoa: 'assets/sprites/bowl_cocoa.png',
+    whole_strawberry: 'assets/sprites/whole_strawberry.png',
+    whole_banana: 'assets/sprites/whole_banana.png',
+    whole_kiwi: 'assets/sprites/whole_kiwi.png',
+    whole_blueberry: 'assets/sprites/whole_blueberry.png',
+    whole_peach: 'assets/sprites/whole_peach.png',
+    whole_cocoa: 'assets/sprites/whole_cocoa.png',
+    sliced_strawberry: 'assets/sprites/sliced_strawberry.png',
+    sliced_banana: 'assets/sprites/sliced_banana.png',
+    sliced_kiwi: 'assets/sprites/sliced_kiwi.png',
+    sliced_blueberry: 'assets/sprites/sliced_blueberry.png',
+    sliced_peach: 'assets/sprites/sliced_peach.png',
+    sliced_cocoa: 'assets/sprites/sliced_cocoa.png',
+    mixing_bowl: 'assets/sprites/mixing_bowl.png',
+    milk_pitcher: 'assets/sprites/milk_pitcher.png',
+    egg_plate: 'assets/sprites/egg_plate.png',
+    whisk: 'assets/sprites/whisk.png',
+    mint_oven: 'assets/sprites/mint_oven.png',
+    turntable: 'assets/sprites/turntable.png',
+    rosette: 'assets/sprites/rosette.png',
+    cake_whole: 'assets/sprites/cake_whole.png',
+    cake_cut: 'assets/sprites/cake_cut.png',
+    cake_slice_plate: 'assets/sprites/cake_slice_plate.png',
+    piping_bag: 'assets/sprites/piping_bag.png',
+    candy_bowl: 'assets/sprites/candy_bowl.png',
+    cake_knife: 'assets/sprites/cake_knife.png',
+    cake_spoon: 'assets/sprites/cake_spoon.png'
+  };
+
+  const images = {};
+  const loaded = {};
+  const tintedCache = {};
+
+  function preloadAll() {
+    for (const [key, src] of Object.entries(SPRITE_FILES)) {
+      const img = new Image();
+      img.onload = () => { loaded[key] = true; };
+      img.src = src;
+      images[key] = img;
+    }
+  }
+  preloadAll();
+
+  function parseHex(hex) {
+    if (!hex || typeof hex !== 'string') return [255, 200, 180];
+    const m = hex.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if (m) return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+    return [255, 200, 180];
+  }
+
+  // Pixel-level 3D cylindrical sponge cake multi-tier color shader preserving studio porous crumb texture
+  function getTintedCakeCanvas(key, dish) {
+    const img = images[key];
+    if (!img || !loaded[key] || !img.naturalWidth) return null;
+
+    const layers = (dish && dish.layerColors && dish.layerColors.length > 0)
+      ? dish.layerColors
+      : ['#ff99bb', '#ffe878', '#9be858'];
+    const frostingHex = (dish && dish.frostingColor) ? dish.frostingColor : '#fff8f2';
+    const isCocoa = !!(dish && dish.isCocoa);
+    const cacheKey = `${key}|${layers.join(',')}|${frostingHex}|${isCocoa ? 1 : 0}`;
+    if (tintedCache[cacheKey]) return tintedCache[cacheKey];
+
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+    const off = document.createElement('canvas');
+    off.width = w;
+    off.height = h;
+    const octx = off.getContext('2d');
+    octx.drawImage(img, 0, 0);
+
+    try {
+      const imgData = octx.getImageData(0, 0, w, h);
+      const d = imgData.data;
+      const rgbLayers = [
+        parseHex(layers[0]),
+        parseHex(layers[1 % layers.length]),
+        parseHex(layers[2 % layers.length])
+      ];
+      const fRgb = parseHex(frostingHex);
+
+      for (let y = 0; y < h; y++) {
+        const ny = y / h;
+        for (let x = 0; x < w; x++) {
+          const i = (y * w + x) * 4;
+          const a = d[i + 3];
+          if (a < 20) continue;
+
+          const nx = (x / w) - 0.5;
+          // Cylindrical perspective curvature adjustment so horizontal layers follow the 3D cake curve
+          const cylCurve = (key === 'cake_whole' || key === 'cake_cut')
+            ? 0.055 * (1 - 4 * nx * nx)
+            : 0.0;
+          const cy = ny - cylCurve;
+
+          let tier = 0;
+          if (key === 'cake_whole') {
+            if (cy < 0.39) tier = 0;
+            else if (cy < 0.64) tier = 1;
+            else tier = 2;
+          } else if (key === 'cake_cut') {
+            if (cy < 0.43) tier = 0;
+            else if (cy < 0.68) tier = 1;
+            else tier = 2;
+          } else {
+            // cake_slice_plate
+            if (ny < 0.37) tier = 0;
+            else if (ny < 0.56) tier = 1;
+            else tier = 2;
+          }
+          const [tr, tg, tb] = rgbLayers[tier];
+
+          const r = d[i];
+          const g = d[i + 1];
+          const b = d[i + 2];
+          const warmth = r - b;
+
+          // On cake_whole, trim away the outer wooden board rim so the 3-tier sponge cylinder sits directly on the porcelain turntable
+          if (key === 'cake_whole' && (cy > 0.825 || x < w * 0.082 || x > w * 0.918)) {
+            d[i + 3] = 0;
+            continue;
+          }
+          const isWoodenBoard = false;
+          const isPlate = (key === 'cake_slice_plate' && (ny > 0.77 || x < w * 0.22 || x > w * 0.80));
+
+          if (!isWoodenBoard && !isPlate && warmth > 32 && r > 135) {
+            const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 212.0;
+            const blend = Math.min(1.0, (warmth - 30) / 42.0) * (tier === 0 && isCocoa ? 0.90 : 0.82);
+            const nr = Math.min(255, Math.max(0, tr * lum * 1.05));
+            const ng = Math.min(255, Math.max(0, tg * lum * 1.05));
+            const nb = Math.min(255, Math.max(0, tb * lum * 1.05));
+            d[i]     = Math.round(r * (1 - blend) + nr * blend);
+            d[i + 1] = Math.round(g * (1 - blend) + ng * blend);
+            d[i + 2] = Math.round(b * (1 - blend) + nb * blend);
+          }
+        }
+      }
+      octx.putImageData(imgData, 0, 0);
+    } catch (e) {
+      // Fallback
     }
 
-    function createTexture(name, w, h, generator) {
-        if (CACHE[name]) return CACHE[name];
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        generator(ctx, w, h);
-        CACHE[name] = canvas;
-        return canvas;
+    tintedCache[cacheKey] = off;
+    return off;
+  }
+
+  function drawContactShadow(ctx, cx, cy, rx, ry, alpha = 0.28) {
+    ctx.save();
+    const grad = ctx.createRadialGradient(cx, cy, rx * 0.1, cx, cy, rx);
+    grad.addColorStop(0, `rgba(38, 18, 6, ${alpha})`);
+    grad.addColorStop(0.65, `rgba(38, 18, 6, ${alpha * 0.45})`);
+    grad.addColorStop(1, 'rgba(38, 18, 6, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawGlowRing(ctx, cx, cy, rx, ry, color, pulse = 0) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4 + Math.sin(pulse) * 1.5;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawSprite(ctx, key, cx, cy, targetW, targetH, opts = {}) {
+    const src = opts.canvasOverride || images[key];
+    if (!src || (!opts.canvasOverride && (!loaded[key] || !src.naturalWidth))) return false;
+
+    const nw = src.width || src.naturalWidth;
+    const nh = src.height || src.naturalHeight;
+    let w = targetW;
+    let h = targetH;
+    if (!h && w) h = w * (nh / nw);
+    if (!w && h) w = h * (nw / nh);
+
+    if (opts.shadow) {
+      drawContactShadow(
+        ctx,
+        cx + (opts.shadowDx || 0),
+        cy + h * (opts.shadowYRatio || 0.42),
+        w * (opts.shadowRxRatio || 0.46),
+        h * (opts.shadowRyRatio || 0.14),
+        opts.shadowAlpha || 0.30
+      );
     }
 
-    function getWoodTexture() {
-        return createTexture('wood', 256, 256, (ctx, w, h) => {
-            ctx.fillStyle = '#d4a373';
-            ctx.fillRect(0, 0, w, h);
-            ctx.globalAlpha = 0.15;
-            for(let i=0; i<300; i++) {
-                ctx.beginPath();
-                ctx.lineWidth = Math.random() * 3 + 1;
-                ctx.strokeStyle = '#8b5a2b';
-                let x = Math.random() * w;
-                ctx.moveTo(x, 0);
-                ctx.bezierCurveTo(x+15, h*0.33, x-15, h*0.66, x, h);
-                ctx.stroke();
-            }
-            ctx.globalAlpha = 1.0;
-        });
+    ctx.save();
+    ctx.translate(cx, cy);
+    if (opts.rot) ctx.rotate(opts.rot);
+    if (opts.sx || opts.sy) ctx.scale(opts.sx || 1, opts.sy || 1);
+    if (opts.alpha !== undefined) ctx.globalAlpha = opts.alpha;
+    ctx.drawImage(src, -w / 2, -h / 2, w, h);
+    ctx.restore();
+    return true;
+  }
+
+  function drawSparkleStar(ctx, x, y, r, color, rot = 0) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rot);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const rad = (i % 2 === 0) ? r : r * 0.36;
+      const ang = (i * Math.PI) / 4;
+      const px = Math.cos(ang) * rad;
+      const py = Math.sin(ang) * rad;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
     }
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
 
-    function getSpongeTexture(color) {
-        return createTexture('sponge_' + color, 128, 128, (ctx, w, h) => {
-            ctx.fillStyle = color;
-            ctx.fillRect(0, 0, w, h);
-            ctx.globalAlpha = 0.3;
-            for(let i=0; i<800; i++) {
-                let x = Math.random() * w, y = Math.random() * h;
-                let r = Math.random() * 1.5 + 0.5;
-                ctx.fillStyle = Math.random() > 0.5 ? '#000' : '#fff';
-                ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
-            }
-            ctx.globalAlpha = 1.0;
-        });
-    }
+  function drawHeart3D(ctx, x, y, size, color) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = color;
+    ctx.shadowColor = 'rgba(255, 40, 90, 0.45)';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.moveTo(0, size * 0.32);
+    ctx.bezierCurveTo(-size * 0.55, -size * 0.15, -size * 0.55, -size * 0.65, 0, -size * 0.28);
+    ctx.bezierCurveTo(size * 0.55, -size * 0.65, size * 0.55, -size * 0.15, 0, size * 0.32);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    ctx.beginPath();
+    ctx.arc(-size * 0.18, -size * 0.25, size * 0.09, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 
-
-    function drawHeart(ctx, x, y, size) {
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.beginPath();
-        ctx.moveTo(0, size/4);
-        ctx.bezierCurveTo(-size/2, -size/2, -size, size/3, 0, size);
-        ctx.bezierCurveTo(size, size/3, size/2, -size/2, 0, size/4);
-        let grad = ctx.createLinearGradient(0, -size/2, 0, size);
-        grad.addColorStop(0, '#ff99cc');
-        grad.addColorStop(1, '#ff3366');
+  function drawBackgroundAndChef(ctx, W, H, state, t, skipBg = false) {
+    // 1. Studio Patisserie Backdrop
+    if (!skipBg) {
+      if (loaded.bg && images.bg) {
+        ctx.drawImage(images.bg, 0, 0, W, H);
+      } else {
+        const grad = ctx.createLinearGradient(0, 0, 0, H);
+        grad.addColorStop(0, '#FFE5EC');
+        grad.addColorStop(0.55, '#FFF5E4');
+        grad.addColorStop(0.56, '#D99B58');
+        grad.addColorStop(1, '#B67637');
         ctx.fillStyle = grad;
-        ctx.fill();
-        ctx.restore();
+        ctx.fillRect(0, 0, W, H);
+      }
     }
 
-    function drawCritterBase(ctx, w, h, state) {
-        const cx = w/2; const cy = 72; const r = 56;
-        const friend = state.friend || 'bobby';
-        const bitesTaken = (state.dish && state.dish.bitesTaken) || state.bitesTaken || 0;
-        
-        ctx.save();
-        ctx.translate(cx, cy);
-        
-        if (bitesTaken > 0 || state.feedAnim > 0) {
-            ctx.scale(1.1, 1.1);
-            ctx.translate(0, Math.sin(Date.now() / 150) * 5);
-        }
+    // Floating warm golden bokeh motes in upper bakery studio air
+    ctx.save();
+    for (let i = 0; i < 10; i++) {
+      const mx = ((i * 113 + t * (12 + (i % 4) * 4)) % (W + 40)) - 20;
+      const my = 32 + ((i * 53) % 150) + Math.sin(t * 1.8 + i) * 10;
+      const mr = 2.5 + (i % 3) * 1.4;
+      ctx.fillStyle = `rgba(255, 245, 200, ${0.28 + 0.2 * Math.sin(t * 2.5 + i)})`;
+      ctx.beginPath();
+      ctx.arc(mx, my, mr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
 
-        ctx.lineWidth = 8;
-        ctx.strokeStyle = '#5C3D2E';
-        ctx.beginPath();
-        ctx.arc(0, 0, r, 0, Math.PI*2);
-        ctx.stroke();
+    // 2. Plush 3D Critter Chef grounded naturally behind the wooden tabletop counter (y=324)
+    const friend = state.friend || 'bobby';
+    let chefPrefix = 'chef_bobby';
+    if (friend === 'catnap') chefPrefix = 'chef_catnap';
+    else if (friend === 'dogday') chefPrefix = 'chef_dogday';
 
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(0, 0, r, 0, Math.PI*2);
-        ctx.clip();
-        if (IMAGES[friend] && IMAGES[friend].complete) {
-            ctx.drawImage(IMAGES[friend], -r, -r, r*2, r*2);
-        } else {
-            ctx.fillStyle = '#f0d0b0';
-            ctx.fill();
-        }
-
-        if (bitesTaken > 0 || state.feedAnim > 0) {
-            ctx.fillStyle = 'rgba(255,105,180,0.6)';
-            ctx.beginPath(); ctx.ellipse(-r*0.4, r*0.2, 12, 8, 0, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.ellipse(r*0.4, r*0.2, 12, 8, 0, 0, Math.PI*2); ctx.fill();
-        }
-        ctx.restore();
-
-        ctx.fillStyle = '#fff';
-        ctx.shadowColor = 'rgba(0,0,0,0.2)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 3;
-        ctx.beginPath(); ctx.ellipse(0, -r*0.9, 35, 15, 0, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(-20, -r-10, 20, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(20, -r-10, 20, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(0, -r-25, 25, 0, Math.PI*2); ctx.fill();
-        ctx.shadowBlur = 0;
-
-        if (bitesTaken > 0 || state.feedAnim > 0) {
-            drawHeart(ctx, -r-30, -20 + Math.sin(Date.now()/200)*10, 20);
-            drawHeart(ctx, r+30, -40 + Math.cos(Date.now()/200)*10, 25);
-            ctx.fillStyle = '#ffd700';
-            ctx.beginPath(); ctx.arc(-r-20, 30, 4, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(r+20, 10, 6, 0, Math.PI*2); ctx.fill();
-        }
-
-        ctx.restore();
+    let pose = 'happy';
+    const isDraggingSpoon = (state.stage === 4 && (state.spoonDrag || (state.activeTool === 'spoon' && state.pointer && state.pointer.isDown)));
+    if (state.feedAnim > 0 || state.critterMood === 'ecstatic') {
+      pose = 'yay';
+    } else if (isDraggingSpoon || (state.stage === 1 && state.sliceTrail && state.sliceTrail.active)) {
+      pose = (chefPrefix === 'chef_bobby') ? 'eat' : 'yay';
     }
 
-    function drawCritterPaws(ctx, w, h, state) {
-        const cx = w/2; 
-        const tableY = h * 0.2;
-        ctx.save();
-        ctx.fillStyle = '#8C6239';
-        ctx.shadowColor = 'rgba(0,0,0,0.3)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 3;
-        ctx.beginPath(); ctx.ellipse(cx - 50, tableY + 5, 18, 12, -0.2, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.ellipse(cx + 50, tableY + 5, 18, 12, 0.2, 0, Math.PI*2); ctx.fill();
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = '#5C3D2E';
-        for(let i=0; i<3; i++) {
-            ctx.beginPath(); ctx.arc(cx - 50 - 8 + i*8, tableY + 9, 3, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(cx + 50 - 8 + i*8, tableY + 9, 3, 0, Math.PI*2); ctx.fill();
-        }
-        ctx.restore();
+    let spriteKey = `${chefPrefix}_${pose}`;
+    if (!loaded[spriteKey]) spriteKey = `${chefPrefix}_happy`;
+
+    const bounceY = (pose === 'yay')
+      ? Math.abs(Math.sin(t * 9.5)) * -16
+      : Math.sin(t * 2.6) * 3.5;
+    const swayRot = (pose === 'yay')
+      ? Math.sin(t * 8.0) * 0.06
+      : Math.sin(t * 1.8) * 0.022;
+    const squashX = (pose === 'yay') ? 1 + Math.sin(t * 9.5) * 0.04 : 1 + Math.sin(t * 2.6) * 0.015;
+    const squashY = (pose === 'yay') ? 1 - Math.sin(t * 9.5) * 0.04 : 1 - Math.sin(t * 2.6) * 0.015;
+
+    const st = state.stage || state.station || 1;
+    // Ground the chef right behind the wooden tabletop horizon (y = 324)
+    const chefCx = W * 0.5;
+    const chefCy = (st === 1 || st === 2) ? (196 + bounceY) : (144 + bounceY);
+    const chefH  = (st === 1 || st === 2) ? 268 : 240;
+
+    // Clip chef at the wooden tabletop edge (y = 325) so the chef stands behind the table!
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, W, 326);
+    ctx.clip();
+    drawSprite(ctx, spriteKey, chefCx, chefCy, null, chefH, {
+      rot: swayRot,
+      sx: squashX,
+      sy: squashY,
+      shadow: false
+    });
+    ctx.restore();
+
+    state.critterHitbox = { x: chefCx - 115, y: 15, w: 230, h: 255, cx: chefCx, cy: chefCy, r: 112 };
+
+    // Floating celebration hearts & stars when fed or cheering
+    if (pose === 'yay' || state.feedAnim > 0) {
+      for (let i = 0; i < 6; i++) {
+        const phase = (t * 1.6 + i * 0.35) % 1.0;
+        const hx = chefCx + Math.sin(i * 2.1 + t * 2) * (75 + i * 16) * (i % 2 === 0 ? 1 : -1);
+        const hy = chefCy - 20 - phase * 95;
+        drawHeart3D(ctx, hx, hy, 22 * (1 - phase * 0.35), i % 2 === 0 ? '#FF3366' : '#FF77AA');
+        drawSparkleStar(ctx, hx + 18, hy - 10, 8 * (1 - phase * 0.3), '#FFE066', t * 3 + i);
+      }
     }
-    function drawTabletop(ctx, w, h, state) {
-        const grad = ctx.createLinearGradient(0, 0, 0, h*0.2);
-        grad.addColorStop(0, '#fefae0');
-        grad.addColorStop(1, '#faedcd');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, w, h*0.2);
+  }
 
-        drawCritterBase(ctx, w, h, state);
-
-        const ptrn = ctx.createPattern(getWoodTexture(), 'repeat');
-        ctx.fillStyle = ptrn;
-        ctx.fillRect(0, h * 0.2, w, h * 0.8);
-        
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        ctx.fillRect(0, h * 0.2, w, 15);
-
-        drawCritterPaws(ctx, w, h, state);
+  function drawNextStageButton(ctx, state, t, ready) {
+    if (!ready || state.stage >= 4) {
+      state.nextBtnHitbox = null;
+      return;
     }
+    const bx = 885;
+    const by = 415 + Math.sin(t * 4.5) * 5;
+    const r = 42;
+    state.nextBtnHitbox = { x: bx - r, y: by - r, w: r * 2, h: r * 2, r };
 
-    function drawCuttingBoard(ctx, x, y, r) {
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        ctx.beginPath(); ctx.ellipse(0, r*0.1, r, r*0.5, 0, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#8b5a2b';
-        ctx.beginPath(); ctx.ellipse(0, 15, r, r*0.5, 0, 0, Math.PI*2); ctx.fill();
-        const ptrn = ctx.createPattern(getWoodTexture(), 'repeat');
-        ctx.fillStyle = ptrn;
-        ctx.beginPath(); ctx.ellipse(0, 0, r, r*0.5, 0, 0, Math.PI*2); ctx.fill();
-        ctx.restore();
-    }
+    drawContactShadow(ctx, bx, by + 36, 36, 12, 0.3);
+    ctx.save();
+    ctx.translate(bx, by);
+    const scale = 1 + Math.sin(t * 5.5) * 0.06;
+    ctx.scale(scale, scale);
 
-    function drawIngredient3D(ctx, x, y, size, type, sliced = false) {
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        ctx.beginPath();
-        ctx.ellipse(0, size/2, size*0.4, size*0.15, 0, 0, Math.PI*2);
-        ctx.fill();
+    const grad = ctx.createRadialGradient(-10, -12, 4, 0, 0, r);
+    grad.addColorStop(0, '#B9F6CA');
+    grad.addColorStop(0.55, '#00E676');
+    grad.addColorStop(1, '#00B248');
+    ctx.fillStyle = grad;
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 4.5;
+    ctx.shadowColor = 'rgba(0, 230, 118, 0.55)';
+    ctx.shadowBlur = 16;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
 
-        if (sliced) {
-            for(let i=0; i<3; i++) {
-                drawSingleIngredient(ctx, -size/4 + i*size/4, i*size/8, size*0.7, type, true);
-            }
-        } else {
-            drawSingleIngredient(ctx, 0, 0, size, type, false);
-        }
-        ctx.restore();
-    }
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.moveTo(-14, -12);
+    ctx.lineTo(4, -12);
+    ctx.lineTo(4, -22);
+    ctx.lineTo(24, 0);
+    ctx.lineTo(4, 22);
+    ctx.lineTo(4, 12);
+    ctx.lineTo(-14, 12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
 
-    function drawSingleIngredient(ctx, dx, dy, size, type, isSlice) {
-        ctx.save();
-        ctx.translate(dx, dy);
-        let grad = ctx.createRadialGradient(-size*0.2, -size*0.2, size*0.1, 0, 0, size/2);
-        
-        const drawHighlight = (w, h, rot) => {
-            ctx.fillStyle = 'rgba(255,255,255,0.4)';
-            ctx.beginPath(); ctx.ellipse(-size*0.15, -size*0.15, w, h, rot, 0, Math.PI*2); ctx.fill();
-        };
+  // ==================== STAGE 1: SLICE & PREP ====================
+  function drawStage1(ctx, W, H, state, t) {
+    state.tableIngredientHitboxes = {};
+    const boardCx = 480;
+    const boardCy = 372;
 
-        if (type === 'strawberry') {
-            grad.addColorStop(0, '#ff9999');
-            grad.addColorStop(0.5, '#ff3333');
-            grad.addColorStop(1, '#cc0000');
-            ctx.fillStyle = grad;
-            ctx.beginPath();
-            if (isSlice) {
-                ctx.ellipse(0, 0, size/2, size/3, 0, 0, Math.PI*2);
-            } else {
-                ctx.moveTo(0, -size/2);
-                ctx.bezierCurveTo(size/2, -size/2, size/2, size/4, 0, size/2);
-                ctx.bezierCurveTo(-size/2, size/4, -size/2, -size/2, 0, -size/2);
-            }
-            ctx.fill();
-            
-            if (!isSlice) {
-                ctx.fillStyle = '#228B22';
-                ctx.beginPath();
-                for(let i=0; i<5; i++) {
-                    ctx.moveTo(0, -size/2 + 5);
-                    let lx = Math.cos(Math.PI + (i-2.5)*0.8) * size*0.4;
-                    let ly = -size/2 + Math.sin(Math.PI + (i-2.5)*0.8) * size*0.4;
-                    ctx.quadraticCurveTo(lx/2, -size/2 - 5, lx, ly);
-                    ctx.quadraticCurveTo(lx/2, ly+10, 0, -size/2 + 5);
-                }
-                ctx.fill();
-                drawHighlight(size*0.15, size*0.08, -Math.PI/4);
-            }
-            
-            ctx.fillStyle = isSlice ? '#ffcccc' : '#ffd700';
-            if (isSlice) {
-                 ctx.beginPath(); ctx.ellipse(0, 0, size/4, size/6, 0, 0, Math.PI*2); ctx.fill();
-            } else {
-                 for(let i=0; i<20; i++) {
-                     let sx = (Math.random()-0.5)*size*0.6;
-                     let sy = (Math.random()-0.5)*size*0.6;
-                     ctx.beginPath(); ctx.ellipse(sx, sy, 2, 3, 0, 0, Math.PI*2); ctx.fill();
-                 }
-            }
-        } else if (type === 'banana') {
-            grad.addColorStop(0, '#ffffcc');
-            grad.addColorStop(0.8, '#ffe600');
-            grad.addColorStop(1, '#ccb300');
-            ctx.fillStyle = grad;
-            ctx.beginPath();
-            if (isSlice) {
-                ctx.arc(0, 0, size/2, 0, Math.PI*2); ctx.fill();
-                ctx.strokeStyle = '#cccc00'; ctx.lineWidth = 2; ctx.stroke();
-                ctx.fillStyle = '#cccc00'; ctx.beginPath(); ctx.arc(0,0,size/6,0,Math.PI*2); ctx.fill();
-            } else {
-                ctx.moveTo(-size/2, size/3);
-                ctx.quadraticCurveTo(0, -size/1.5, size/2, -size/3);
-                ctx.quadraticCurveTo(size/3, Math.PI/2, -size/2, size/3);
-                ctx.fill();
-                ctx.fillStyle = '#5c3a21';
-                ctx.beginPath(); ctx.arc(size/2, -size/3, size/10, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = '#3a2110';
-                ctx.beginPath(); ctx.arc(-size/2, size/3, size/12, 0, Math.PI*2); ctx.fill();
-                drawHighlight(size*0.3, size*0.05, Math.PI/6);
-            }
-        } else if (type === 'kiwi') {
-            grad.addColorStop(0, '#a67b5b');
-            grad.addColorStop(0.6, '#8b5a2b');
-            grad.addColorStop(1, '#5c3a21');
-            ctx.fillStyle = isSlice ? '#ccff99' : grad;
-            ctx.beginPath();
-            ctx.ellipse(0, 0, size/2, size/2.5, 0, 0, Math.PI*2);
-            ctx.fill();
-            
-            if (!isSlice) {
-                ctx.strokeStyle = '#5c3a21';
-                for(let i=0; i<40; i++) {
-                     let sx = (Math.random()-0.5)*size*0.7;
-                     let sy = (Math.random()-0.5)*size*0.6;
-                     ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx+2, sy+3); ctx.stroke();
-                }
-            }
-            
-            // Bright green face for both (smaller for !isSlice to look like a cut half)
-            ctx.save();
-            if (!isSlice) {
-                ctx.translate(0, -size*0.1);
-                ctx.scale(0.8, 0.4);
-            }
-            let sgrad = ctx.createRadialGradient(0, 0, 0, 0, 0, size/2);
-            sgrad.addColorStop(0, '#ffffcc');
-            sgrad.addColorStop(0.3, '#99ff33');
-            sgrad.addColorStop(1, '#66cc00');
-            ctx.fillStyle = sgrad;
-            ctx.beginPath(); ctx.ellipse(0, 0, size/2, size/2.5, 0, 0, Math.PI*2); ctx.fill();
-            
-            ctx.fillStyle = '#e6ffcc';
-            ctx.beginPath(); ctx.arc(0,0,size/5,0,Math.PI*2); ctx.fill();
-            
-            ctx.strokeStyle = '#e6ffcc';
-            ctx.lineWidth = 2;
-            for(let i=0; i<20; i++) {
-                let a = i * Math.PI*2/20;
-                ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(a)*size*0.4, Math.sin(a)*size*0.4); ctx.stroke();
-            }
+    // 1. Studio Honey-Oak Butcher Block Cutting Board
+    drawSprite(ctx, 'cutting_board', boardCx, boardCy, 455, null, {
+      shadow: true,
+      shadowYRatio: 0.42,
+      shadowRxRatio: 0.48,
+      shadowRyRatio: 0.17,
+      shadowAlpha: 0.38
+    });
+    state.boardHitbox = { x: boardCx - 215, y: boardCy - 105, w: 430, h: 200 };
 
-            ctx.fillStyle = '#000000';
-            for(let i=0; i<12; i++) {
-                let a = i * Math.PI / 6;
-                ctx.beginPath(); ctx.ellipse(Math.cos(a)*size/3, Math.sin(a)*size/3, size/20, size/40, a, 0, Math.PI*2); ctx.fill();
-            }
-            ctx.restore();
-            
-            if (!isSlice) {
-                drawHighlight(size*0.15, size*0.2, 0);
-            }
-        } else if (type === 'blueberry') {
-            grad.addColorStop(0, '#9999ff');
-            grad.addColorStop(0.7, '#3333cc');
-            grad.addColorStop(1, '#000066');
-            ctx.fillStyle = grad;
-            ctx.beginPath();
-            ctx.arc(0, 0, size/2, 0, Math.PI*2);
-            ctx.fill();
-            if (!isSlice) {
-                ctx.fillStyle = '#1a1a4c';
-                ctx.beginPath();
-                ctx.moveTo(0, -size/2 + 5);
-                for(let i=0; i<5; i++) {
-                    let a = i * Math.PI*2/5 - Math.PI/2;
-                    ctx.lineTo(Math.cos(a)*size/6, -size/2 + Math.sin(a)*size/6 + 5);
-                }
-                ctx.fill();
-                drawHighlight(size*0.15, size*0.15, 0);
-            }
-        } else if (type === 'peach') {
-            grad.addColorStop(0, '#ffccaa');
-            grad.addColorStop(0.5, '#ff9966');
-            grad.addColorStop(1, '#cc6633');
-            ctx.fillStyle = grad;
-            ctx.beginPath();
-            ctx.arc(0, 0, size/2, 0, Math.PI*2);
-            ctx.fill();
-            
-            if (!isSlice) {
-                ctx.strokeStyle = '#e65c00';
-                ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.moveTo(0, -size/2); ctx.quadraticCurveTo(-size*0.2, 0, 0, size/2); ctx.stroke();
-                
-                ctx.fillStyle = '#228B22';
-                ctx.beginPath(); ctx.moveTo(0, -size/2); ctx.quadraticCurveTo(size*0.4, -size*0.7, size*0.5, -size*0.3); ctx.quadraticCurveTo(size*0.2, -size*0.2, 0, -size/2); ctx.fill();
-                drawHighlight(size*0.15, size*0.15, 0);
-            }
-        } else if (type === 'cocoa') {
-            if (!isSlice) {
-                ctx.fillStyle = '#fff';
-                ctx.beginPath(); ctx.ellipse(0, size/2 + 10, size*0.6, size*0.2, 0, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = '#000';
-                ctx.beginPath(); ctx.arc(-size*0.4, size/2 + 5, size*0.1, 0, Math.PI*2); ctx.fill();
-                ctx.beginPath(); ctx.arc(size*0.4, size/2 + 5, size*0.1, 0, Math.PI*2); ctx.fill();
-            }
+    // 2. Six Studio 3D Porcelain Fruit Bowls arranged around the cutting board
+    const bowlSlots = [
+      { id: 'strawberry', x: 128, y: 268 },
+      { id: 'banana',     x: 245, y: 222 },
+      { id: 'kiwi',       x: 128, y: 404 },
+      { id: 'blueberry',  x: 715, y: 222 },
+      { id: 'peach',      x: 832, y: 268 },
+      { id: 'cocoa',      x: 832, y: 404 }
+    ];
 
-            grad.addColorStop(0, '#8c5220');
-            grad.addColorStop(0.7, '#4a2505');
-            grad.addColorStop(1, '#241000');
-            ctx.fillStyle = grad;
-            ctx.beginPath();
-            ctx.ellipse(0, 0, size/3, size/2, 0, 0, Math.PI*2);
-            ctx.fill();
+    for (let i = 0; i < bowlSlots.length; i++) {
+      const slot = bowlSlots[i];
+      const isSelected = state.boardItem && state.boardItem.id === slot.id;
+      const isAlreadySliced = state.slicedIngredients && state.slicedIngredients.includes(slot.id);
+      const bob = Math.sin(t * 2.8 + i * 1.1) * 3.5;
 
-            if (!isSlice) {
-                ctx.strokeStyle = '#3d1f04';
-                ctx.lineWidth = 3;
-                ctx.beginPath(); ctx.moveTo(0, -size/2); ctx.quadraticCurveTo(-size*0.2, 0, 0, size/2); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(0, -size/2); ctx.lineTo(0, size/2); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(0, -size/2); ctx.quadraticCurveTo(size*0.2, 0, 0, size/2); ctx.stroke();
-                drawHighlight(size*0.05, size*0.2, 0);
-            }
-        } else if (type === 'egg') {
-            grad.addColorStop(0, '#ffffff');
-            grad.addColorStop(0.7, '#ffeadb');
-            grad.addColorStop(1, '#e0c8b6');
-            ctx.fillStyle = grad;
-            ctx.beginPath();
-            ctx.ellipse(0, 0, size/2, size/1.6, 0, 0, Math.PI*2);
-            ctx.fill();
-            drawHighlight(size*0.15, size*0.2, 0);
-        } else {
-             ctx.fillStyle = '#ccc';
-             ctx.beginPath(); ctx.arc(0,0,size/2,0,Math.PI*2); ctx.fill();
-        }
-        ctx.restore();
+      if (isSelected) {
+        drawGlowRing(ctx, slot.x, slot.y + bob, 60, 48, '#FFD54F', t * 5);
+      } else if (isAlreadySliced) {
+        drawGlowRing(ctx, slot.x, slot.y + bob, 56, 44, '#69F0AE', t * 3);
+      }
+
+      drawSprite(ctx, `bowl_${slot.id}`, slot.x, slot.y + bob, 118, null, {
+        shadow: true,
+        shadowYRatio: 0.44,
+        shadowRxRatio: 0.45,
+        shadowRyRatio: 0.16,
+        shadowAlpha: 0.28,
+        sx: isSelected ? 1.08 : 1.0,
+        sy: isSelected ? 1.08 : 1.0
+      });
+
+      state.tableIngredientHitboxes[slot.id] = {
+        id: slot.id,
+        x: slot.x - 58,
+        y: slot.y - 58,
+        w: 116,
+        h: 116,
+        r: 58
+      };
     }
 
-    function getCombinedColor(colors) {
-        if (!colors || colors.length === 0) return '#fffdd0';
-        if (colors[0] && colors[0].startsWith('#')) return colors[0];
-        if (colors.includes('cocoa')) return '#4a2505';
-        if (colors.includes('strawberry')) return '#ff9999';
-        if (colors.includes('kiwi') || colors.includes('banana')) return '#ccff99';
-        if (colors.includes('blueberry')) return '#9999ff';
-        return '#fffdd0';
-    }
+    // 3. Active Fruit on the Cutting Board (Uses whole_<id> with NO bowl on the cutting board!)
+    if (state.boardItem && state.boardItem.id) {
+      const fid = state.boardItem.id;
+      const cuts = state.boardItem.cuts || 0;
+      const wobble = (state.sliceTrail && state.sliceTrail.active) ? Math.sin(t * 42) * 0.1 : 0;
 
-    function drawStage1Prep(ctx, w, h, state) {
-        state.tableIngredientHitboxes = {};
-        const boardX = w/2;
-        const boardY = h*0.6;
-        const boardR = Math.max(190, w * 0.3);
-        
-        state.boardHitbox = {x: boardX, y: boardY, r: boardR};
-        
-        drawCuttingBoard(ctx, boardX, boardY, boardR);
+      drawGlowRing(ctx, boardCx, boardCy - 14, 115, 48, 'rgba(255, 235, 130, 0.75)', t * 4);
 
-        const activeItem = state.boardItem ? state.boardItem.id : state.activeIngredient;
-        if (activeItem) {
-            drawIngredient3D(ctx, boardX, boardY - 30, 150, activeItem, false);
-            
-            ctx.save();
-            ctx.translate(boardX + 100, boardY - 20);
-            if (state.sliceTrail && state.sliceTrail.active && state.sliceTrail.p2) {
-                ctx.translate(state.sliceTrail.p2.x - (boardX+100), state.sliceTrail.p2.y - (boardY-20));
-            }
-            ctx.rotate(Math.PI / 4);
-            ctx.fillStyle = '#111';
-            ctx.beginPath(); ctx.roundRect(-10, -50, 20, 50, 5); ctx.fill();
-            let blade = ctx.createLinearGradient(0, 0, 30, 0);
-            blade.addColorStop(0, '#ccc'); blade.addColorStop(0.5, '#fff'); blade.addColorStop(1, '#999');
-            ctx.fillStyle = blade;
-            ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-8, 90); ctx.lineTo(25, 90); ctx.quadraticCurveTo(25, 40, -8, 0); ctx.fill();
-            ctx.restore();
-        }
-
-        const ingredients = ['strawberry', 'banana', 'kiwi', 'blueberry', 'peach', 'cocoa'];
-        ingredients.forEach((ing, i) => {
-            const angle = Math.PI + (i / 5) * Math.PI;
-            const r = boardR + 90;
-            const ix = boardX + Math.cos(angle) * r;
-            const iy = boardY - 30 + Math.sin(angle) * r * 0.5;
-            
-            ctx.fillStyle = '#fff';
-            ctx.beginPath(); ctx.ellipse(ix, iy+20, 55, 30, 0, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = '#e0e0e0';
-            ctx.beginPath(); ctx.ellipse(ix, iy+15, 50, 25, 0, 0, Math.PI*2); ctx.fill();
-            
-            drawIngredient3D(ctx, ix, iy, 96, ing, false);
-            state.tableIngredientHitboxes[ing] = {x: ix - 48, y: iy - 48, w: 96, h: 96, r: 55};
+      if (cuts === 0) {
+        drawSprite(ctx, `whole_${fid}`, boardCx, boardCy - 24, 145, null, {
+          rot: wobble,
+          shadow: true,
+          shadowYRatio: 0.40,
+          shadowRxRatio: 0.42,
+          shadowRyRatio: 0.15,
+          shadowAlpha: 0.34
         });
-
-        const bowlX = boardX + boardR + 100;
-        const bowlY = boardY;
-        ctx.fillStyle = 'rgba(255,255,255,0.4)';
-        ctx.beginPath(); ctx.ellipse(bowlX, bowlY, 90, 45, 0, 0, Math.PI*2); ctx.fill();
-        
-        const slicedItems = state.dish?.items || state.slicedIngredients;
-        if (slicedItems && slicedItems.length > 0) {
-            slicedItems.forEach((ingObj, i) => {
-                let id = typeof ingObj === 'string' ? ingObj : (ingObj.id || ingObj);
-                drawIngredient3D(ctx, bowlX, bowlY - i*15, 80, id, true);
-            });
-            
-            ctx.fillStyle = '#ff7f50';
-            ctx.beginPath(); ctx.roundRect(w - 120, h/2 - 30, 100, 60, 30); ctx.fill();
-            ctx.fillStyle = '#fff';
-            ctx.beginPath(); ctx.moveTo(w-80, h/2-15); ctx.lineTo(w-50, h/2); ctx.lineTo(w-80, h/2+15); ctx.fill();
-            state.nextBtnHitbox = {x: w - 120, y: h/2 - 30, w: 100, h: 60};
-        } else {
-            state.nextBtnHitbox = null;
-        }
-
-        if (state.sliceTrail && state.sliceTrail.active && state.sliceTrail.p1 && state.sliceTrail.p2) {
-            ctx.strokeStyle = '#e0e0e0';
-            ctx.lineWidth = 12;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.beginPath();
-            ctx.moveTo(state.sliceTrail.p1.x, state.sliceTrail.p1.y);
-            ctx.lineTo(state.sliceTrail.p2.x, state.sliceTrail.p2.y);
-            ctx.stroke();
-            ctx.fillStyle = '#333';
-            ctx.beginPath(); ctx.ellipse(state.sliceTrail.p2.x, state.sliceTrail.p2.y, 25, 12, 0, 0, Math.PI*2); ctx.fill();
-        }
-    }
-
-    function drawStage2Mix(ctx, w, h, state) {
-        state.tableHelperHitboxes = {};
-        const bowlX = w/2;
-        const bowlY = h*0.6;
-        const bowlR = Math.max(195, w * 0.3);
-        
-        state.glassBowlHitbox = {x: bowlX, y: bowlY + 20, r: bowlR};
-
-        ctx.fillStyle = 'rgba(0,0,0,0.2)';
-        ctx.beginPath(); ctx.ellipse(bowlX, bowlY+100, bowlR*0.8, bowlR*0.3, 0, 0, Math.PI*2); ctx.fill();
-
-        const progress = state.mixProgress || 0;
-        const dish = state.dish || {};
-        const targetColor = dish.batterTint || getCombinedColor(dish.layerColors);
-        
-        const batterColor = progress > 0.5 ? targetColor : '#fffdd0';
-
-        ctx.fillStyle = batterColor;
-        ctx.beginPath(); ctx.ellipse(bowlX, bowlY+30, bowlR*0.9, bowlR*0.4, 0, 0, Math.PI*2); ctx.fill();
-        let bgrad = ctx.createLinearGradient(bowlX - bowlR*0.9, bowlY+30, bowlX + bowlR*0.9, bowlY+30);
-        bgrad.addColorStop(0, 'rgba(255,255,255,0.7)');
-        bgrad.addColorStop(0.5, 'rgba(255,255,255,0)');
-        bgrad.addColorStop(1, 'rgba(0,0,0,0.4)');
-        ctx.fillStyle = bgrad;
-        ctx.fill();
-
-        const angle = state.mixAngle || state.whiskAngle || 0;
-        if (angle || progress > 0) {
-            ctx.save();
-            ctx.translate(bowlX, bowlY+30);
-            ctx.rotate(angle);
-            ctx.strokeStyle = 'rgba(0,0,0,0.1)';
-            ctx.lineWidth = 15;
-            ctx.beginPath();
-            for(let i=0; i<Math.PI*6; i+=0.1) {
-                let rw = i * 12;
-                if(i===0) ctx.moveTo(Math.cos(i)*rw, Math.sin(i)*rw*0.4);
-                else ctx.lineTo(Math.cos(i)*rw, Math.sin(i)*rw*0.4);
-            }
-            ctx.stroke();
-            
-            ctx.translate(50, 0);
-            ctx.rotate(-angle * 2);
-            ctx.strokeStyle = '#c0c0c0';
-            ctx.lineWidth = 4;
-            for(let i=0; i<6; i++) {
-                ctx.beginPath();
-                ctx.ellipse(0, -60, 20, 50, i*Math.PI/6, 0, Math.PI*2);
-                ctx.stroke();
-            }
-            ctx.fillStyle = '#444';
-            ctx.beginPath(); ctx.roundRect(-10, -160, 20, 50, 5); ctx.fill();
-            ctx.restore();
-        }
-
-        if (dish.items && state.fruitAdded) {
-            dish.items.forEach((ing, i) => {
-                let id = typeof ing === 'string' ? ing : (ing.id || ing);
-                let ang = angle + i * Math.PI*2/dish.items.length;
-                let r = bowlR * 0.5;
-                drawIngredient3D(ctx, bowlX + Math.cos(ang)*r, bowlY + 30 + Math.sin(ang)*r*0.4, 70, id, true);
-            });
-        }
-        
-        if (state.eggAdded) {
-            ctx.fillStyle = '#fff';
-            ctx.beginPath(); ctx.ellipse(bowlX - 40, bowlY + 30, 20, 10, 0, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = '#ffcc00';
-            ctx.beginPath(); ctx.arc(bowlX - 40, bowlY + 30, 10, 0, Math.PI*2); ctx.fill();
-        }
-        
-        if (state.milkAdded) {
-            ctx.fillStyle = 'rgba(255,255,255,0.5)';
-            ctx.beginPath(); ctx.ellipse(bowlX + 40, bowlY + 30, 40, 20, 0, 0, Math.PI*2); ctx.fill();
-        }
-
-        ctx.fillStyle = 'rgba(255,255,255,0.3)';
-        ctx.beginPath(); 
-        ctx.ellipse(bowlX, bowlY, bowlR, bowlR*0.5, 0, 0, Math.PI*2);
-        ctx.ellipse(bowlX, bowlY+100, bowlR*0.8, bowlR*0.4, 0, 0, Math.PI*2);
-        ctx.fill();
-
-        let ex = bowlX - bowlR - 60, ey = bowlY + 60;
-        if (state.eggAdded) {
-            ctx.save();
-            ctx.fillStyle = '#ffeadb';
-            ctx.strokeStyle = '#d0b090'; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(ex, ey, 20, 0, Math.PI, true); ctx.lineTo(ex - 20, ey); ctx.fill(); ctx.stroke();
-            ctx.beginPath(); ctx.arc(ex + 25, ey, 20, 0, Math.PI, false); ctx.lineTo(ex + 5, ey); ctx.fill(); ctx.stroke();
-            ctx.restore();
-        } else {
-            drawIngredient3D(ctx, ex, ey, 96, 'egg', false);
-        }
-        
-        let px = bowlX + bowlR + 60, py = bowlY + 60;
-        let mgrad = ctx.createLinearGradient(px - 50, py, px + 50, py);
-        mgrad.addColorStop(0, '#d1f2eb'); mgrad.addColorStop(0.5, '#e8f8f5'); mgrad.addColorStop(1, '#a3e4d7');
-        ctx.fillStyle = mgrad;
-        ctx.beginPath(); ctx.moveTo(px-40, py+100); ctx.lineTo(px+40, py+100); ctx.lineTo(px+50, py-80); ctx.lineTo(px-50, py-80); ctx.fill();
-        ctx.beginPath(); ctx.ellipse(px, py+100, 40, 15, 0, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.ellipse(px, py-80, 50, 20, 0, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(px-50, py-80); ctx.lineTo(px-70, py-100); ctx.lineTo(px-40, py-80); ctx.fill();
-        ctx.strokeStyle = '#a3e4d7'; ctx.lineWidth = 15; ctx.beginPath(); ctx.moveTo(px+50, py-60); ctx.quadraticCurveTo(px+90, py-40, px+40, py+50); ctx.stroke();
-        
-        if (!state.milkAdded) {
-            ctx.fillStyle = '#fff';
-            ctx.beginPath(); ctx.ellipse(px, py-75, 45, 18, 0, 0, Math.PI*2); ctx.fill();
-        }
-        state.tableHelperHitboxes['milk'] = {x: px - 50, y: py - 100, w: 100, h: 200};
-        state.tableHelperHitboxes['egg'] = {x: ex - 48, y: ey - 48, w: 96, h: 96, r: 48};
-
-        let sx = bowlX - bowlR - 60, sy = bowlY - 60;
-        ctx.fillStyle = 'rgba(255,255,255,0.4)';
-        ctx.beginPath(); ctx.ellipse(sx, sy, 70, 35, 0, 0, Math.PI*2); ctx.fill();
-        if (dish.items && !state.fruitAdded) {
-            dish.items.forEach((ingObj, i) => {
-                let id = typeof ingObj === 'string' ? ingObj : (ingObj.id || ingObj);
-                if (id !== 'cocoa') {
-                    drawIngredient3D(ctx, sx, sy - 10 - i*5, 60, id, true);
-                }
-            });
-        }
-        state.tableHelperHitboxes['slicedFruitBowl'] = {x: sx - 70, y: sy - 35, w: 140, h: 70};
-
-        if (progress >= 1) {
-            ctx.fillStyle = '#ff7f50';
-            ctx.beginPath(); ctx.roundRect(w - 120, h/2 - 30, 100, 60, 30); ctx.fill();
-            ctx.fillStyle = '#fff';
-            ctx.beginPath(); ctx.moveTo(w-80, h/2-15); ctx.lineTo(w-50, h/2); ctx.lineTo(w-80, h/2+15); ctx.fill();
-            state.nextBtnHitbox = {x: w - 120, y: h/2 - 30, w: 100, h: 60};
-        } else {
-            state.nextBtnHitbox = null;
-        }
-    }
-
-    function drawStage3Bake(ctx, w, h, state) {
-        const ovenW = Math.max(480, w * 0.6);
-        const ovenH = Math.max(330, h * 0.5);
-        const ovenX = w/2 - ovenW/2;
-        const ovenY = h*0.5 - ovenH/2;
-
-        state.ovenHitbox = {x: ovenX, y: ovenY, w: ovenW, h: ovenH};
-
-        const bakeProg = state.bakeProgress || 0;
-        let ograd = ctx.createLinearGradient(ovenX, ovenY, ovenX, ovenY+ovenH);
-        ograd.addColorStop(0, '#A8E6CF'); ograd.addColorStop(1, '#68C3A3');
-        ctx.fillStyle = ograd;
-        ctx.beginPath(); ctx.roundRect(ovenX, ovenY, ovenW, ovenH, 28); ctx.fill();
-        
-        ctx.fillStyle = '#444';
-        ctx.beginPath(); ctx.roundRect(ovenX + 20, ovenY + ovenH - 10, 20, 20, 5); ctx.fill();
-        ctx.beginPath(); ctx.roundRect(ovenX + ovenW - 40, ovenY + ovenH - 10, 20, 20, 5); ctx.fill();
-        
-        ctx.fillStyle = '#55a688';
-        ctx.beginPath(); ctx.roundRect(ovenX + ovenW - 100, ovenY, 100, ovenH, [0, 28, 28, 0]); ctx.fill();
-
-        const winW = ovenW * 0.65;
-        const winH = ovenH * 0.65;
-        const winX = ovenX + 30;
-        const winY = ovenY + 50;
-        ctx.fillStyle = '#222';
-        ctx.beginPath(); ctx.roundRect(winX, winY, winW, winH, 15); ctx.fill();
-        
-        ctx.fillStyle = bakeProg > 0 ? '#ff5500' : '#444';
-        ctx.shadowColor = bakeProg > 0 ? '#ff5500' : 'transparent'; ctx.shadowBlur = 15;
-        ctx.fillRect(winX + 20, winY + 20, winW - 40, 10);
-        ctx.fillRect(winX + 20, winY + winH - 30, winW - 40, 10);
-        ctx.shadowBlur = 0;
-
-        const dish = state.dish || {};
-        const layerColors = dish.layerColors || ['#fffdd0'];
-        const cakeH = 30 + bakeProg * 80; 
-        
-        const layerH = cakeH / layerColors.length;
-        layerColors.forEach((col, idx) => {
-            const ptrn = ctx.createPattern(getSpongeTexture(col), 'repeat');
-            ctx.fillStyle = ptrn;
-            const ly = winY + winH - 30 - cakeH + (layerColors.length - 1 - idx) * layerH;
-            ctx.fillRect(winX + winW/2 - 100, ly, 200, layerH);
-            if (idx === layerColors.length - 1) { 
-                 ctx.beginPath(); ctx.ellipse(winX + winW/2, ly, 100, 25, 0, 0, Math.PI*2); ctx.fill();
-            }
+      } else if (cuts === 1) {
+        drawSprite(ctx, `whole_${fid}`, boardCx - 42, boardCy - 22, 120, null, {
+          rot: -0.1 + wobble,
+          shadow: true,
+          shadowYRatio: 0.40
         });
-        
-        ctx.fillStyle = '#ccc'; 
-        ctx.fillRect(winX + winW/2 - 110, winY + winH - 40, 220, 20);
+        drawSprite(ctx, `sliced_${fid}`, boardCx + 42, boardCy - 16, 142, null, {
+          rot: 0.08 - wobble,
+          shadow: true,
+          shadowYRatio: 0.40
+        });
+      } else {
+        drawSprite(ctx, `sliced_${fid}`, boardCx - 28, boardCy - 20, 152, null, {
+          rot: -0.06 + wobble,
+          shadow: true,
+          shadowYRatio: 0.40
+        });
+        drawSprite(ctx, `sliced_${fid}`, boardCx + 34, boardCy - 14, 152, null, {
+          rot: 0.1 - wobble,
+          shadow: true,
+          shadowYRatio: 0.40
+        });
+      }
 
-        if (bakeProg > 0) {
-            ctx.fillStyle = `rgba(255, 150, 0, ${0.2 + bakeProg * 0.3})`;
-            ctx.beginPath(); ctx.roundRect(winX, winY, winW, winH, 15); ctx.fill();
-        }
-
-        ctx.fillStyle = '#eee';
-        ctx.beginPath(); ctx.roundRect(winX - 10, winY - 30, winW + 20, 15, 7); ctx.fill();
-
-        drawHeart(ctx, ovenX + ovenW - 50, ovenY + 22, 16);
-
-        for(let i=0; i<2; i++) {
-            let dx = ovenX + ovenW - 50;
-            let dy = ovenY + 100 + i*80;
-            ctx.fillStyle = '#fffdd0';
-            ctx.beginPath(); ctx.arc(dx, dy, 25, 0, Math.PI*2); ctx.fill();
-            ctx.shadowColor = 'rgba(0,0,0,0.3)'; ctx.shadowBlur = 5;
-            ctx.fillStyle = '#eee';
-            ctx.beginPath(); ctx.arc(dx, dy, 20, 0, Math.PI*2); ctx.fill();
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = '#444';
-            for(let t=0; t<6; t++) {
-                ctx.beginPath(); ctx.arc(dx + Math.cos(t*Math.PI/3)*30, dy + Math.sin(t*Math.PI/3)*30, 2, 0, Math.PI*2); ctx.fill();
-            }
-            let pa = i === 0 ? Math.PI + bakeProg*Math.PI : -Math.PI/4;
-            ctx.strokeStyle = '#444'; ctx.lineWidth = 4;
-            ctx.beginPath(); ctx.moveTo(dx, dy); ctx.lineTo(dx + Math.cos(pa)*15, dy + Math.sin(pa)*15); ctx.stroke();
-        }
-
-        if (bakeProg >= 1) {
-            ctx.fillStyle = '#ff7f50';
-            ctx.beginPath(); ctx.roundRect(w - 120, h/2 - 30, 100, 60, 30); ctx.fill();
-            ctx.fillStyle = '#fff';
-            ctx.beginPath(); ctx.moveTo(w-80, h/2-15); ctx.lineTo(w-50, h/2); ctx.lineTo(w-80, h/2+15); ctx.fill();
-            state.nextBtnHitbox = {x: w - 120, y: h/2 - 30, w: 100, h: 60};
-        } else {
-            state.nextBtnHitbox = null;
-        }
+      const kx = (state.pointer && state.pointer.isDown && state.pointer.y > 200)
+        ? state.pointer.x + 55
+        : boardCx + 115 + Math.sin(t * 3.5) * 12;
+      const ky = (state.pointer && state.pointer.isDown && state.pointer.y > 200)
+        ? state.pointer.y - 18
+        : boardCy - 52 + Math.cos(t * 3.5) * 8;
+      const krot = (state.sliceTrail && state.sliceTrail.active) ? -0.48 : -0.25 + Math.sin(t * 3.5) * 0.05;
+      drawSprite(ctx, 'chef_knife', kx, ky, 240, null, {
+        rot: krot,
+        shadow: true,
+        shadowYRatio: 0.55,
+        shadowAlpha: 0.22
+      });
+    } else {
+      drawSprite(ctx, 'chef_knife', boardCx + 95, boardCy + 24, 230, null, {
+        rot: -0.16,
+        shadow: true,
+        shadowYRatio: 0.45,
+        shadowAlpha: 0.28
+      });
     }
 
-    const RAINBOW = ['#ff0000', '#ff7f00', '#ffff00', '#00ff00', '#0000ff', '#4b0082', '#8b00ff'];
+    // 4. Gleaming Slice Slash Trail & Flying Juice Sparkles
+    if (state.sliceTrail && state.sliceTrail.active) {
+      ctx.save();
+      ctx.strokeStyle = `rgba(255, 255, 255, ${state.sliceTrail.alpha})`;
+      ctx.lineWidth = 7;
+      ctx.lineCap = 'round';
+      ctx.shadowColor = '#FFF59D';
+      ctx.shadowBlur = 16;
+      ctx.beginPath();
+      ctx.moveTo(state.sliceTrail.p1.x, state.sliceTrail.p1.y);
+      ctx.lineTo(state.sliceTrail.p2.x, state.sliceTrail.p2.y);
+      ctx.stroke();
+      ctx.restore();
 
-    function drawPipingBag3D(ctx, x, y, active) {
-        ctx.save();
-        ctx.translate(x, y);
-        if (active) {
-            ctx.shadowColor = '#fff';
-            ctx.shadowBlur = 20;
-        }
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        ctx.beginPath(); ctx.ellipse(0, 35, 30, 10, 0, 0, Math.PI*2); ctx.fill();
-        ctx.shadowBlur = 0;
+      for (let i = 0; i < 5; i++) {
+        const sx = boardCx + (i - 2) * 28;
+        const sy = boardCy - 35 - (1 - state.sliceTrail.alpha) * 45 - (i % 2) * 18;
+        drawSparkleStar(ctx, sx, sy, 9, '#FFF176', t * 6 + i);
+      }
+    }
 
-        let grad = ctx.createLinearGradient(-30, 0, 30, 0);
-        grad.addColorStop(0, '#ff99cc');
-        grad.addColorStop(0.3, '#ffe6f2');
-        grad.addColorStop(1, '#ff3385');
-        ctx.fillStyle = grad;
+    // 5. Sliced Fruit Piles along the front-left/right of the cutting board
+    const slicedList = state.slicedIngredients || [];
+    if (slicedList.length > 0) {
+      const startX = boardCx - ((Math.min(slicedList.length, 4) - 1) * 95) / 2;
+      for (let i = 0; i < Math.min(slicedList.length, 4); i++) {
+        const fid = slicedList[i];
+        const px = startX + i * 95;
+        const py = 434;
+        drawSprite(ctx, `sliced_${fid}`, px, py, 94, null, {
+          shadow: true,
+          shadowYRatio: 0.42
+        });
+      }
+    }
+
+    drawNextStageButton(ctx, state, t, slicedList.length > 0);
+  }
+
+  // ==================== STAGE 2: POUR & SWIRL WHISK ====================
+  function drawStage2(ctx, W, H, state, t) {
+    state.tableHelperHitboxes = {};
+    const bowlCx = 480;
+    const bowlCy = 362;
+    const bowlW = 350;
+    const bowlH = 252;
+
+    const domFruit = (state.dish && state.dish.items && state.dish.items.length > 0)
+      ? state.dish.items[0].id
+      : 'strawberry';
+
+    const helpers = [
+      { id: 'egg',   sprite: 'egg_plate',          x: 185, y: 272, w: 165, added: state.eggAdded },
+      { id: 'milk',  sprite: 'milk_pitcher',       x: 190, y: 412, w: 145, added: state.milkAdded },
+      { id: 'fruit', sprite: `sliced_${domFruit}`, x: 775, y: 288, w: 165, added: state.fruitAdded }
+    ];
+
+    for (let i = 0; i < helpers.length; i++) {
+      const h = helpers[i];
+      const bob = h.added ? 0 : Math.sin(t * 3.2 + i) * 4;
+      if (!h.added) {
+        drawGlowRing(ctx, h.x, h.y + bob, 68, 46, '#FFD54F', t * 4 + i);
+      }
+      drawSprite(ctx, h.sprite, h.x, h.y + bob, h.w, null, {
+        alpha: h.added ? 0.48 : 1.0,
+        shadow: true,
+        shadowYRatio: 0.42
+      });
+      state.tableHelperHitboxes[h.id] = {
+        id: h.id,
+        x: h.x - 80,
+        y: h.y - 68,
+        w: 160,
+        h: 136,
+        r: 76
+      };
+    }
+    state.tableHelperHitboxes.slicedFruitBowl = state.tableHelperHitboxes.fruit;
+
+    drawSprite(ctx, 'mixing_bowl', bowlCx, bowlCy, bowlW, bowlH, {
+      shadow: true,
+      shadowYRatio: 0.44,
+      shadowRxRatio: 0.46,
+      shadowRyRatio: 0.16,
+      shadowAlpha: 0.36
+    });
+    state.glassBowlHitbox = { x: bowlCx - 175, y: bowlCy - 125, w: 350, h: 250, r: 165 };
+
+    const rimCy = bowlCy - 56;
+    const rimRx = 136;
+    const rimRy = 42;
+    const mix = state.mixProgress || 0;
+    const tint = (state.dish && state.dish.batterTint) ? state.dish.batterTint : '#ffadc6';
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(bowlCx, rimCy, rimRx, rimRy, 0, 0, Math.PI * 2);
+    ctx.clip();
+
+    const bGrad = ctx.createRadialGradient(bowlCx - 20, rimCy - 8, 12, bowlCx, rimCy, rimRx);
+    bGrad.addColorStop(0, mix > 0.15 ? tint : '#FFF8E1');
+    bGrad.addColorStop(0.7, mix > 0.05 ? tint : '#FFE082');
+    bGrad.addColorStop(1, '#D7A86E');
+    ctx.fillStyle = bGrad;
+    ctx.fillRect(bowlCx - rimRx, rimCy - rimRy, rimRx * 2, rimRy * 2);
+
+    const unmixedAlpha = Math.max(0, 1 - mix * 1.15);
+    if (unmixedAlpha > 0.02) {
+      ctx.globalAlpha = unmixedAlpha;
+      if (state.milkAdded) {
+        ctx.fillStyle = '#FFFFFF';
         ctx.beginPath();
-        ctx.moveTo(0, -40); 
-        ctx.quadraticCurveTo(35, 10, 20, 30);
-        ctx.lineTo(-20, 30);
-        ctx.quadraticCurveTo(-35, 10, 0, -40);
+        ctx.ellipse(bowlCx - 28, rimCy + 4, 62, 20, 0.2, 0, Math.PI * 2);
         ctx.fill();
-
-        let met = ctx.createLinearGradient(-10, 30, 10, 30);
-        met.addColorStop(0, '#ccc');
-        met.addColorStop(0.5, '#fff');
-        met.addColorStop(1, '#999');
-        ctx.fillStyle = met;
+      }
+      if (state.eggAdded) {
+        ctx.fillStyle = 'rgba(255,255,245,0.85)';
         ctx.beginPath();
-        ctx.moveTo(-20, 30); ctx.lineTo(20, 30);
-        ctx.lineTo(10, 45); ctx.lineTo(-10, 45);
+        ctx.ellipse(bowlCx + 24, rimCy - 2, 42, 16, -0.1, 0, Math.PI * 2);
         ctx.fill();
-        ctx.restore();
-    }
-
-    function drawCandyBowl3D(ctx, x, y, active) {
-        ctx.save();
-        ctx.translate(x, y);
-        if (active) {
-            ctx.shadowColor = '#fff';
-            ctx.shadowBlur = 20;
-        }
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        ctx.beginPath(); ctx.ellipse(0, 15, 65, 25, 0, 0, Math.PI*2); ctx.fill();
-        ctx.shadowBlur = 0;
-
-        ctx.fillStyle = '#e6e6e6';
-        ctx.beginPath(); ctx.ellipse(0, -10, 60, 20, 0, Math.PI, Math.PI*2); ctx.fill();
-
-        for(let i=0; i<15; i++) {
-            let cx = (Math.random()-0.5)*80;
-            let cy = -15 + (Math.random()-0.5)*15;
-            if (cx*cx/(50*50) + (cy+15)*(cy+15)/(15*15) > 1) continue;
-            ctx.fillStyle = RAINBOW[i%RAINBOW.length];
-            ctx.beginPath(); ctx.arc(cx, cy, 8, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = 'rgba(255,255,255,0.6)';
-            ctx.beginPath(); ctx.arc(cx-2, cy-2, 3, 0, Math.PI*2); ctx.fill();
-        }
-        
-        ctx.save(); ctx.translate(10, -20); ctx.scale(0.6, 0.6); drawIngredient3D(ctx, 0, 0, 50, 'strawberry', true); ctx.restore();
-
-        let grad = ctx.createRadialGradient(0, 5, 10, 0, 10, 60);
-        grad.addColorStop(0, '#ffffff');
-        grad.addColorStop(0.8, '#f2f2f2');
-        grad.addColorStop(1, '#cccccc');
-        ctx.fillStyle = grad;
-        ctx.beginPath(); ctx.ellipse(0, -10, 60, 20, 0, 0, Math.PI); 
-        ctx.bezierCurveTo(60, 30, -60, 30, -60, -10);
-        ctx.fill();
-        ctx.restore();
-    }
-
-    function drawCakeKnife3D(ctx, x, y, active) {
-        ctx.save();
-        ctx.translate(x, y);
-        if (active) {
-            ctx.shadowColor = '#fff';
-            ctx.shadowBlur = 20;
-        }
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        ctx.beginPath(); ctx.ellipse(0, 15, 75, 15, 0, 0, Math.PI*2); ctx.fill();
-        ctx.shadowBlur = 0;
-
-        let met = ctx.createLinearGradient(-50, -10, -50, 10);
-        met.addColorStop(0, '#eee');
-        met.addColorStop(0.5, '#fff');
-        met.addColorStop(1, '#999');
-        ctx.fillStyle = met;
+        ctx.fillStyle = '#FFB300';
         ctx.beginPath();
-        ctx.moveTo(-70, 5);
-        ctx.lineTo(20, 5);
-        ctx.lineTo(20, -15);
-        ctx.quadraticCurveTo(-50, -15, -70, 5);
+        ctx.ellipse(bowlCx + 24, rimCy - 2, 20, 11, 0, 0, Math.PI * 2);
         ctx.fill();
-
-        let wood = ctx.createLinearGradient(20, -10, 20, 10);
-        wood.addColorStop(0, '#5c3a21');
-        wood.addColorStop(0.3, '#8b5a2b');
-        wood.addColorStop(1, '#3a2110');
-        ctx.fillStyle = wood;
-        ctx.beginPath(); ctx.roundRect(20, -10, 50, 20, 10); ctx.fill();
-        ctx.restore();
+      }
+      if (state.fruitAdded) {
+        drawSprite(ctx, `sliced_${domFruit}`, bowlCx, rimCy + 2, 95, null, { alpha: unmixedAlpha });
+      }
     }
 
-    function drawSpoon3D(ctx, x, y, active) {
-        ctx.save();
-        ctx.translate(x, y);
-        if (active) {
-            ctx.shadowColor = '#fff';
-            ctx.shadowBlur = 20;
-        }
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        ctx.beginPath(); ctx.ellipse(0, 10, 65, 15, 0, 0, Math.PI*2); ctx.fill();
-        ctx.shadowBlur = 0;
+    ctx.globalAlpha = 0.25 + mix * 0.65;
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 3.5;
+    for (let r = 18; r <= 110; r += 22) {
+      const startA = (state.whiskAngle || 0) * 0.7 + r * 0.05;
+      ctx.beginPath();
+      ctx.ellipse(bowlCx, rimCy, r, r * 0.31, 0, startA, startA + Math.PI * 1.35);
+      ctx.stroke();
+    }
+    ctx.restore();
 
-        let met = ctx.createLinearGradient(-40, -10, 40, 10);
-        met.addColorStop(0, '#ddd');
-        met.addColorStop(0.5, '#fff');
-        met.addColorStop(1, '#aaa');
-        
-        ctx.fillStyle = met;
-        ctx.beginPath(); ctx.roundRect(-20, -5, 80, 10, 5); ctx.fill();
-        
-        ctx.beginPath(); ctx.ellipse(-40, 0, 30, 20, 0, 0, Math.PI*2); ctx.fill();
-        
-        let inner = ctx.createLinearGradient(-50, -10, -30, 10);
-        inner.addColorStop(0, '#888');
-        inner.addColorStop(1, '#eee');
-        ctx.fillStyle = inner;
-        ctx.beginPath(); ctx.ellipse(-40, 0, 24, 15, 0, 0, Math.PI*2); ctx.fill();
-        ctx.restore();
+    const wx = (state.pointer && state.pointer.isDown && Math.hypot(state.pointer.x - bowlCx, state.pointer.y - bowlCy) < 190)
+      ? state.pointer.x + 38
+      : bowlCx + 52 + Math.cos((state.whiskAngle || t * 2)) * 28;
+    const wy = (state.pointer && state.pointer.isDown && Math.hypot(state.pointer.x - bowlCx, state.pointer.y - bowlCy) < 190)
+      ? state.pointer.y - 38
+      : rimCy - 42 + Math.sin((state.whiskAngle || t * 2)) * 12;
+    const wrot = Math.sin((state.whiskAngle || t * 2)) * 0.16;
+
+    drawSprite(ctx, 'whisk', wx, wy, 205, null, {
+      rot: wrot,
+      shadow: false
+    });
+
+    if (mix >= 0.85) {
+      for (let i = 0; i < 4; i++) {
+        drawSparkleStar(
+          ctx,
+          bowlCx - 90 + i * 60,
+          rimCy - 25 + Math.sin(t * 4 + i) * 8,
+          10,
+          '#FFF59D',
+          t * 3 + i
+        );
+      }
     }
 
-    function drawStage4DecorateAndFeed(ctx, w, h, state) {
-        state.tableToolHitboxes = {};
-        const cx = w/2;
-        const cy = h*0.68;
-        const r = Math.max(200, w*0.3);
-        const cakeH = 120;
-        const critterY = 95;
+    drawNextStageButton(ctx, state, t, mix >= 0.4 || (state.eggAdded && state.milkAdded));
+  }
 
-        const dish = state.dish || {};
-        const friend = state.friend || 'bobby';
-        const bitesTaken = (dish.bitesTaken !== undefined) ? dish.bitesTaken : (state.bitesTaken || 0);
-        const isWedgeCut = (dish.slicedWedge !== undefined) ? dish.slicedWedge : state.slicedWedge;
+  // ==================== STAGE 3: PASTEL MINT MINI-OVEN ====================
+  function drawStage3(ctx, W, H, state, t) {
+    const ovenCx = 480;
+    const ovenCy = 342;
+    const ovenW = 470;
+    const ovenH = 310;
+    const bake = state.bakeProgress || 0;
 
-        state.cakeHitbox = {x: cx - r*0.85, y: cy - cakeH, w: r*1.7, h: cakeH + r*0.6, cx: cx, cy: cy, rx: cx - r*0.85, ry: cy - cakeH - r*0.3};
-        state.critterHitbox = {x: cx - 80, y: critterY - 80, w: 160, h: 160, r: 80};
+    drawSprite(ctx, 'mint_oven', ovenCx, ovenCy, ovenW, ovenH, {
+      shadow: true,
+      shadowYRatio: 0.45,
+      shadowRxRatio: 0.48,
+      shadowRyRatio: 0.14,
+      shadowAlpha: 0.38
+    });
+    state.ovenHitbox = { x: ovenCx - 235, y: ovenCy - 155, w: 470, h: 310, r: 220 };
 
+    const winCx = ovenCx - 30;
+    const winBottomY = ovenCy + 64;
+    const winW = 232;
+    const winH = 132;
 
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(winCx - winW / 2, winBottomY - winH, winW, winH, 14);
+    ctx.clip();
 
-        ctx.fillStyle = '#e0e0e0';
-        ctx.beginPath(); ctx.ellipse(cx, cy+60, r*1.1, r*0.4, 0, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.ellipse(cx, cy+40, r*1.1, r*0.4, 0, 0, Math.PI*2); ctx.fill();
+    const glow = ctx.createRadialGradient(winCx, winBottomY - 50, 10, winCx, winBottomY - 50, 140);
+    glow.addColorStop(0, `rgba(255, 210, 110, ${0.25 + bake * 0.35})`);
+    glow.addColorStop(1, 'rgba(255, 140, 40, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(winCx - winW / 2, winBottomY - winH, winW, winH);
 
-        const layerColors = dish.layerColors || ['#ff9999'];
-        const baseColor = layerColors[0] || '#ff9999';
+    const tintedCake = getTintedCakeCanvas('cake_whole', state.dish);
+    const cakeW = 168;
+    const cakeFullH = 122;
+    const riseScaleY = 0.42 + bake * 0.58;
+    const curH = cakeFullH * riseScaleY;
+    const cakeCy = winBottomY - curH / 2 - 4;
 
-        if (!isWedgeCut) {
-            const layerH = cakeH / layerColors.length;
-            layerColors.forEach((col, idx) => {
-                const ptrn = ctx.createPattern(getSpongeTexture(col), 'repeat');
-                ctx.fillStyle = ptrn;
-                const ly = cy - cakeH + (layerColors.length - 1 - idx) * layerH;
-                if (idx === 0) {
-                     ctx.beginPath(); ctx.ellipse(cx, cy, r*0.8, r*0.3, 0, 0, Math.PI*2); ctx.fill();
-                }
-                ctx.fillRect(cx - r*0.8, ly, r*1.6, layerH);
-            });
-            
-            ctx.fillStyle = dish.frostingColor || baseColor;
-            ctx.beginPath(); ctx.ellipse(cx, cy - cakeH, r*0.8, r*0.3, 0, 0, Math.PI*2); ctx.fill();
-            let topGrad = ctx.createLinearGradient(cx - r*0.8, cy - cakeH, cx + r*0.8, cy - cakeH);
-            topGrad.addColorStop(0, 'rgba(255,255,255,0.7)');
-            topGrad.addColorStop(0.5, 'rgba(255,255,255,0)');
-            topGrad.addColorStop(1, 'rgba(0,0,0,0.4)');
-            ctx.fillStyle = topGrad;
-            ctx.fill();
-        } else {
-            const layerH = cakeH / layerColors.length;
+    drawSprite(ctx, 'cake_whole', winCx, cakeCy, cakeW, curH, {
+      canvasOverride: tintedCake,
+      shadow: false
+    });
 
-            layerColors.forEach((col, idx) => {
-                const ptrn = ctx.createPattern(getSpongeTexture(col), 'repeat');
-                ctx.fillStyle = ptrn;
-                const ly = cy - cakeH + (layerColors.length - 1 - idx) * layerH;
-                
-                ctx.beginPath();
-                ctx.moveTo(cx, ly);
-                ctx.ellipse(cx, ly, r*0.8, r*0.3, 0, 0.45, Math.PI*2 - 0.45);
-                ctx.lineTo(cx, ly);
-                ctx.lineTo(cx, ly + layerH);
-                ctx.ellipse(cx, ly + layerH, r*0.8, r*0.3, 0, Math.PI*2 - 0.45, 0.45, true);
-                ctx.lineTo(cx, ly + layerH);
-                ctx.closePath();
-                ctx.fill();
-            });
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.26)';
+    ctx.lineWidth = 14;
+    ctx.beginPath();
+    ctx.moveTo(winCx - 95, winBottomY - winH + 10);
+    ctx.lineTo(winCx - 35, winBottomY - 10);
+    ctx.stroke();
+    ctx.restore();
 
-            ctx.fillStyle = dish.frostingColor || baseColor;
-            ctx.beginPath(); 
-            ctx.moveTo(cx, cy - cakeH); 
-            ctx.ellipse(cx, cy - cakeH, r*0.8, r*0.3, 0, 0.45, Math.PI*2 - 0.45); 
-            ctx.closePath(); 
-            ctx.fill();
-
-            let topGrad = ctx.createLinearGradient(cx - r*0.8, cy - cakeH, cx + r*0.8, cy - cakeH);
-            topGrad.addColorStop(0, 'rgba(255,255,255,0.7)');
-            topGrad.addColorStop(0.5, 'rgba(255,255,255,0)');
-            topGrad.addColorStop(1, 'rgba(0,0,0,0.4)');
-            ctx.fillStyle = topGrad;
-            ctx.beginPath(); 
-            ctx.moveTo(cx, cy - cakeH); 
-            ctx.ellipse(cx, cy - cakeH, r*0.8, r*0.3, 0, 0.45, Math.PI*2 - 0.45); 
-            ctx.closePath(); 
-            ctx.fill();
-
-            layerColors.forEach((col, idx) => {
-                const ptrn = ctx.createPattern(getSpongeTexture(col), 'repeat');
-                ctx.fillStyle = ptrn;
-                const ly = cy - cakeH + (layerColors.length - 1 - idx) * layerH;
-                
-                ctx.beginPath(); ctx.moveTo(cx, ly); ctx.lineTo(cx + Math.cos(0.45)*r*0.8, ly + Math.sin(0.45)*r*0.3); ctx.lineTo(cx + Math.cos(0.45)*r*0.8, ly + layerH + Math.sin(0.45)*r*0.3); ctx.lineTo(cx, ly + layerH); ctx.fill();
-                ctx.beginPath(); ctx.moveTo(cx, ly); ctx.lineTo(cx + Math.cos(-0.45)*r*0.8, ly + Math.sin(-0.45)*r*0.3); ctx.lineTo(cx + Math.cos(-0.45)*r*0.8, ly + layerH + Math.sin(-0.45)*r*0.3); ctx.lineTo(cx, ly + layerH); ctx.fill();
-                ctx.fillStyle = 'rgba(0,0,0,0.08)';
-                ctx.fill();
-            });
-
-            const px = cx + r*1.5; const py = cy + 60;
-            ctx.fillStyle = '#fff';
-            ctx.beginPath(); ctx.ellipse(px, py, 90, 40, 0, 0, Math.PI*2); ctx.fill();
-            
-            const sliceH = cakeH*0.6; const slH = sliceH / layerColors.length;
-            const sx = px; const sy = py - 10 - sliceH;
-            
-            layerColors.forEach((col, idx) => {
-                const ptrn = ctx.createPattern(getSpongeTexture(col), 'repeat');
-                ctx.fillStyle = ptrn;
-                const ly = sy + (layerColors.length - 1 - idx) * slH;
-                ctx.beginPath(); ctx.moveTo(sx, ly); ctx.lineTo(sx - 40, ly + 20); ctx.lineTo(sx - 40, ly + 20 + slH); ctx.lineTo(sx, ly + slH); ctx.fill();
-                ctx.beginPath(); ctx.moveTo(sx, ly); ctx.lineTo(sx + 50, ly + 10); ctx.lineTo(sx + 50, ly + 10 + slH); ctx.lineTo(sx, ly + slH); ctx.fill();
-            });
-            
-            ctx.fillStyle = dish.frostingColor || baseColor;
-            ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx - 40, sy + 20); ctx.lineTo(sx + 20, sy + 30); ctx.lineTo(sx + 50, sy + 10); ctx.fill();
-            drawIngredient3D(ctx, sx + 5, sy + 10, 30, 'strawberry', false);
-        }
-
-        const cakeX = state.cakeHitbox.x;
-        const cakeY = state.cakeHitbox.y;
-
-        if (dish.rosettes) {
-            dish.rosettes.forEach(ros => {
-                let rx = ros.x; let ry = ros.y;
-                if (rx < cx - r) { rx += cakeX; ry += cakeY; }
-                ctx.fillStyle = '#FFFDF9';
-                ctx.beginPath(); ctx.arc(rx, ry, 18, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = ros.color || (dish.frostingColor === '#ffffff' ? '#FF99BB' : (dish.frostingColor || '#FF99BB'));
-                ctx.beginPath(); ctx.arc(rx, ry, 13, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = '#FFFDF9';
-                ctx.beginPath(); ctx.arc(rx, ry, 8, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = '#FF2255';
-                ctx.beginPath(); ctx.arc(rx, ry, 4.5, 0, Math.PI*2); ctx.fill();
-            });
-        }
-
-        if (dish.candyBalls) {
-            dish.candyBalls.forEach((cb, i) => {
-                let cx_b = cb.x; let cy_b = cb.y;
-                if (cx_b < cx - r) { cx_b += cakeX; cy_b += cakeY; }
-                let color = cb.color;
-                if (!color) {
-                    let seed = Math.floor(cb.seed !== undefined ? cb.seed : i);
-                    color = RAINBOW[seed % RAINBOW.length] || '#ff0000';
-                }
-                ctx.fillStyle = color;
-                ctx.beginPath(); ctx.arc(cx_b, cy_b, 10, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = 'rgba(255,255,255,0.6)';
-                ctx.beginPath(); ctx.arc(cx_b - 3, cy_b - 3, 4, 0, Math.PI*2); ctx.fill();
-            });
-        }
-
-        if (dish.toppings) {
-            dish.toppings.forEach(tp => {
-                let tx = tp.x; let ty = tp.y;
-                if (tx < cx - r) { tx += cakeX; ty += cakeY; }
-                drawIngredient3D(ctx, tx, ty, 45, tp.id || tp.kind, true);
-            });
-        }
-
-        let px = cx - r*1.2, py = cy + 50;
-        drawPipingBag3D(ctx, px, py, state.activeTool === 'piping');
-        state.tableToolHitboxes['piping'] = {x: px - 40, y: py - 40, w: 80, h: 80, r: 60};
-
-        let cx2 = cx - r*0.6, cy2 = cy + 120;
-        drawCandyBowl3D(ctx, cx2, cy2, state.activeTool === 'candy');
-        state.tableToolHitboxes['candy'] = {x: cx2 - 60, y: cy2 - 30, w: 120, h: 60, r: 60};
-
-        let kx = cx + r*0.6, ky = cy + 120;
-        drawCakeKnife3D(ctx, kx, ky, state.activeTool === 'knife');
-        state.tableToolHitboxes['knife'] = {x: kx - 70, y: ky - 20, w: 140, h: 40, r: 60};
-
-        let sx = cx + r*1.2, sy = cy + 50;
-        drawSpoon3D(ctx, sx, sy, state.activeTool === 'spoon');
-        state.tableToolHitboxes['spoon'] = {x: sx - 70, y: sy - 20, w: 130, h: 40, r: 60};
+    if (bake < 1.0) {
+      drawGlowRing(ctx, ovenCx + 152, ovenCy - 18, 34, 34, '#FFD54F', t * 5);
+    } else {
+      for (let i = 0; i < 6; i++) {
+        const sx = ovenCx - 130 + i * 52;
+        const sy = ovenCy - 135 - ((t * 32 + i * 19) % 45);
+        drawSparkleStar(ctx, sx, sy, 11, '#FFE082', t * 4 + i);
+      }
     }
 
-    return {
-        drawFrame: function(ctx, w, h, state) {
-            loadImages();
-            ctx.save();
-            ctx.clearRect(0, 0, w, h);
-            drawTabletop(ctx, w, h, state);
+    drawNextStageButton(ctx, state, t, bake >= 1.0);
+  }
 
-            const stage = state.stage || state.station || 1;
-            
-            if (stage === 1) {
-                drawStage1Prep(ctx, w, h, state);
-            } else if (stage === 2) {
-                drawStage2Mix(ctx, w, h, state);
-            } else if (stage === 3) {
-                drawStage3Bake(ctx, w, h, state);
-            } else if (stage === 4 || stage === 5) {
-                drawStage4DecorateAndFeed(ctx, w, h, state);
-            }
+  // ==================== STAGE 4: TURNTABLE DECORATE, SLICE & FEED ====================
+  function drawStage4(ctx, W, H, state, t) {
+    state.tableToolHitboxes = {};
+    const standCx = 465;
+    const standCy = 408;
 
-            ctx.restore();
-        },
-        drawButtonIcon: function(canvas, kind) {
-            const ctx = canvas.getContext('2d');
-            const w = canvas.width; const h = canvas.height;
-            ctx.clearRect(0,0,w,h);
-            ctx.save();
-            if (kind === 'stage1') {
-                ctx.fillStyle = '#8b5a2b'; ctx.beginPath(); ctx.ellipse(w/2, h/2+5, 20, 10, 0, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = '#d4a373'; ctx.beginPath(); ctx.ellipse(w/2, h/2, 20, 10, 0, 0, Math.PI*2); ctx.fill();
-                drawSingleIngredient(ctx, w/2-5, h/2, 16, 'strawberry', false);
-                ctx.fillStyle = '#ccc'; ctx.beginPath(); ctx.moveTo(w/2+5, h/2-15); ctx.lineTo(w/2+15, h/2+5); ctx.lineTo(w/2+20, h/2+5); ctx.fill();
-                ctx.fillStyle = '#111'; ctx.beginPath(); ctx.roundRect(w/2+15, h/2+5, 5, 15, 2); ctx.fill();
-            } else if (kind === 'stage2') {
-                ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.beginPath(); ctx.ellipse(w/2, h/2+10, 20, 10, 0, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = '#ff99cc'; ctx.beginPath(); ctx.ellipse(w/2, h/2+10, 18, 8, 0, 0, Math.PI*2); ctx.fill();
-                ctx.strokeStyle = '#888'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(w/2, h/2-5, 5, 15, 0, 0, Math.PI*2); ctx.stroke();
-            } else if (kind === 'stage3') {
-                ctx.fillStyle = '#A8E6CF'; ctx.beginPath(); ctx.roundRect(w/2-20, h/2-15, 40, 30, 5); ctx.fill();
-                ctx.fillStyle = '#ff5500'; ctx.beginPath(); ctx.roundRect(w/2-10, h/2-5, 20, 15, 2); ctx.fill();
-            } else if (kind === 'stage4') {
-                ctx.fillStyle = '#ffcce6'; ctx.fillRect(w/2-15, h/2-5, 30, 15);
-                ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(w/2, h/2-5, 15, 5, 0, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = '#cc0000'; ctx.beginPath(); ctx.arc(w/2, h/2-10, 4, 0, Math.PI*2); ctx.fill();
-            }
-            ctx.restore();
-        }
+    drawSprite(ctx, 'turntable', standCx, standCy, 355, null, {
+      shadow: true,
+      shadowYRatio: 0.42,
+      shadowRxRatio: 0.44,
+      shadowRyRatio: 0.14,
+      shadowAlpha: 0.35
+    });
+
+    const isSliced = !!(state.slicedWedge || (state.dish && state.dish.slicedWedge));
+    const cakeKey = isSliced ? 'cake_cut' : 'cake_whole';
+    const tintedCake = getTintedCakeCanvas(cakeKey, state.dish);
+    const cakeCx = standCx;
+    const cakeCy = isSliced ? 302 : 306;
+    const cakeW = isSliced ? 245 : 275;
+
+    drawSprite(ctx, cakeKey, cakeCx, cakeCy, cakeW, null, {
+      canvasOverride: tintedCake,
+      shadow: false
+    });
+
+    state.cakeHitbox = {
+      x: cakeCx - 145,
+      y: cakeCy - 115,
+      w: 290,
+      h: 220,
+      r: 145
     };
+
+    const rosettes = (state.dish && state.dish.rosettes) ? state.dish.rosettes : [];
+    for (let i = 0; i < rosettes.length; i++) {
+      const ros = rosettes[i];
+      const rx = Math.max(cakeCx - 98, Math.min(cakeCx + 88, ros.x));
+      const ry = Math.max(cakeCy - 95, Math.min(cakeCy - 32, ros.y));
+      drawSprite(ctx, 'rosette', rx, ry, 58, null, {
+        shadow: true,
+        shadowYRatio: 0.38,
+        shadowRxRatio: 0.4,
+        shadowRyRatio: 0.15,
+        shadowAlpha: 0.22
+      });
+    }
+
+    const candyBalls = (state.dish && state.dish.candyBalls) ? state.dish.candyBalls : [];
+    const pearlColors = ['#FF4081', '#00E5FF', '#FFD740', '#69F0AE', '#B388FF', '#FF6E40'];
+    const domFruit = (state.dish && state.dish.items && state.dish.items.length > 0)
+      ? state.dish.items[0].id
+      : 'strawberry';
+
+    for (let i = 0; i < candyBalls.length; i++) {
+      const cb = candyBalls[i];
+      const cx = Math.max(cakeCx - 95, Math.min(cakeCx + 90, cb.x));
+      const cy = Math.max(cakeCy - 88, Math.min(cakeCy + 45, cb.y));
+
+      drawSprite(ctx, `sliced_${domFruit}`, cx, cy, 48, null, { shadow: false });
+      for (let p = 0; p < 4; p++) {
+        const px = cx + Math.cos(i * 1.7 + p * 1.57) * 20;
+        const py = cy + Math.sin(i * 1.7 + p * 1.57) * 11;
+        const col = pearlColors[(i + p) % pearlColors.length];
+        ctx.save();
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.arc(px, py, 5.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.beginPath();
+        ctx.arc(px - 1.8, py - 1.8, 2.0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    if (isSliced) {
+      const tintedSlice = getTintedCakeCanvas('cake_slice_plate', state.dish);
+      const plateCx = 665;
+      const plateCy = 415;
+      const bites = state.bitesTaken || (state.dish && state.dish.bitesTaken) || 0;
+      const biteScale = Math.max(0.55, 1.0 - Math.min(bites, 3) * 0.14);
+
+      drawSprite(ctx, 'cake_slice_plate', plateCx, plateCy, 195 * biteScale, null, {
+        canvasOverride: tintedSlice,
+        shadow: true,
+        shadowYRatio: 0.42,
+        shadowRxRatio: 0.46,
+        shadowRyRatio: 0.16,
+        shadowAlpha: 0.32
+      });
+    }
+
+    const tools = [
+      { id: 'piping', alias: 'pipingBag', sprite: 'piping_bag', x: 155, y: 268, w: 155 },
+      { id: 'candy',  alias: 'candyBowl', sprite: 'candy_bowl', x: 155, y: 408, w: 145 },
+      { id: 'knife',  alias: 'cakeKnife', sprite: 'cake_knife', x: 805, y: 268, w: 165 },
+      { id: 'spoon',  alias: 'spoon',     sprite: 'cake_spoon', x: 805, y: 408, w: 165 }
+    ];
+
+    for (let i = 0; i < tools.length; i++) {
+      const tl = tools[i];
+      const isActive = state.activeTool === tl.id;
+      const bob = Math.sin(t * 3.0 + i * 1.2) * 3.5;
+
+      if (isActive) {
+        drawGlowRing(ctx, tl.x, tl.y + bob, 72, 48, '#FFD54F', t * 5);
+      }
+
+      drawSprite(ctx, tl.sprite, tl.x, tl.y + bob, tl.w, null, {
+        sx: isActive ? 1.12 : 1.0,
+        sy: isActive ? 1.12 : 1.0,
+        shadow: true,
+        shadowYRatio: 0.42
+      });
+
+      const hb = {
+        id: tl.id,
+        x: tl.x - 76,
+        y: tl.y - 62,
+        w: 152,
+        h: 124,
+        r: 72
+      };
+      state.tableToolHitboxes[tl.id] = hb;
+      state.tableToolHitboxes[tl.alias] = hb;
+    }
+
+    if (state.spoonDrag) {
+      drawSprite(ctx, 'cake_spoon', state.spoonDrag.x, state.spoonDrag.y, 175, null, {
+        rot: -0.15,
+        shadow: true,
+        shadowYRatio: 0.55,
+        shadowAlpha: 0.25
+      });
+    }
+  }
+
+  function drawFrame(ctx, W, H, state, t, view) {
+    const vw = (view && view.vw) ? view.vw : W;
+    const vh = (view && view.vh) ? view.vh : H;
+    const scale = (view && view.scale) ? view.scale : 1;
+    const ox = (view && view.ox) ? view.ox : 0;
+    const oy = (view && view.oy) ? view.oy : 0;
+
+    ctx.save();
+    ctx.clearRect(0, 0, vw, vh);
+
+    // Draw full-bleed cover background across the entire viewport (zero letterbox bars, zero distortion)
+    if (loaded.bg && images.bg) {
+      const img = images.bg;
+      const iw = img.naturalWidth || 1376;
+      const ih = img.naturalHeight || 768;
+      // Align tabletop horizon (y = 324 in 960x560 stage space -> oy + 324 * scale in viewport space)
+      const bgScale = Math.max(vw / iw, vh / ih);
+      const bw = iw * bgScale;
+      const bh = ih * bgScale;
+      const bx = (vw - bw) * 0.5;
+      const by = (oy + 324 * scale) - bh * (324 / 560);
+      ctx.drawImage(img, bx, by, bw, bh);
+      // Fill bottom wood extension if tall portrait screen extends below bg image
+      if (by + bh < vh) {
+        const woodGrad = ctx.createLinearGradient(0, by + bh - 4, 0, vh);
+        woodGrad.addColorStop(0, '#B57D43');
+        woodGrad.addColorStop(1, '#8C5828');
+        ctx.fillStyle = woodGrad;
+        ctx.fillRect(0, by + bh - 2, vw, vh - (by + bh) + 4);
+      }
+      if (by > 0) {
+        ctx.fillStyle = '#FCEAE3';
+        ctx.fillRect(0, 0, vw, by + 2);
+      }
+    }
+
+    ctx.translate(ox, oy);
+    ctx.scale(scale, scale);
+    drawBackgroundAndChef(ctx, W, H, state, t, true);
+
+    const st = state.stage || state.station || 1;
+    if (st === 1) drawStage1(ctx, W, H, state, t);
+    else if (st === 2) drawStage2(ctx, W, H, state, t);
+    else if (st === 3) drawStage3(ctx, W, H, state, t);
+    else drawStage4(ctx, W, H, state, t);
+    ctx.restore();
+  }
+
+  return {
+    drawFrame,
+    images,
+    loaded
+  };
 })();
