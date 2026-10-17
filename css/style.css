@@ -9,7 +9,8 @@
   --spring-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --soft-ease: cubic-bezier(0.25, 0.8, 0.25, 1);
   --cocoa: #5C3D2E;
-  --cream-bg: #FFFDF9;
+  --cream-linen: #FAF3EB;
+  --cream-bg: #FAF3EB;
   --terracotta: #E8998D;
   --sage-mint: #A8D8C8;
   --gold: #F4CF82;
@@ -29,27 +30,34 @@
 html, body {
   width: 100%;
   height: 100%;
+  max-width: 100vw;
+  max-height: 100vh;
   overflow: hidden;
   font-family: Georgia, "Times New Roman", serif;
-  background-color: #F8F3EC;
+  background-color: #FAF3EB;
   background-image:
     radial-gradient(circle at 50% 45%, rgba(255, 253, 249, 0.75) 0%, rgba(240, 226, 210, 0.35) 75%, rgba(220, 198, 175, 0.45) 100%),
     radial-gradient(rgba(92, 61, 46, 0.025) 1px, transparent 0),
-    linear-gradient(160deg, #FAF4ED 0%, #F5EAE0 50%, #ECE0D2 100%);
+    linear-gradient(160deg, #FAF3EB 0%, #F5EAE0 50%, #ECE0D2 100%);
   background-size: 100% 100%, 28px 28px, 100% 100%;
   color: var(--cocoa);
+  touch-action: manipulation;
+  overscroll-behavior: none;
 }
 
 .kitchen-app {
   display: flex;
   flex-direction: column;
   width: 100vw;
-  height: 100vh;
+  height: 100%;
   max-width: 1440px;
+  max-height: 100%;
   margin: 0 auto;
   padding: 8px 12px;
   gap: 8px;
   position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 /* 1. Top Patisserie Header Bar */
@@ -57,15 +65,23 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(180deg, #FFFDFB 0%, #FAF3EB 100%);
-  border: 2.5px solid #D9B89C;
+  background: linear-gradient(180deg, #FFFDF9 0%, #FAF3EB 100%);
+  border: 2.5px solid var(--cocoa);
   border-radius: 22px;
-  padding: 5px 14px;
+  padding: 5px 12px;
   box-shadow:
-    0 4px 14px rgba(110, 75, 50, 0.07),
+    0 4px 14px rgba(92, 61, 46, 0.1),
     inset 0 2px 0 rgba(255, 255, 255, 0.9);
   flex-shrink: 0;
-  gap: 10px;
+  gap: 8px;
+  min-height: 52px;
+  box-sizing: border-box;
+}
+
+.brand-badge {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
 }
 
 .brand-badge canvas {
@@ -84,8 +100,11 @@ html, body {
   align-items: center;
   gap: 8px;
   overflow-x: auto;
-  padding: 3px 6px;
+  padding: 2px 4px;
   scrollbar-width: none;
+  flex: 1 1 0;
+  min-width: 0;
+  -webkit-overflow-scrolling: touch;
 }
 
 .customer-strip::-webkit-scrollbar {
@@ -96,12 +115,18 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #FAF1E6;
-  border: 2.5px solid #DEC0A6;
+  background: var(--cream-linen);
+  border: 2.5px solid var(--cocoa);
   border-radius: 50%;
   padding: 2px;
   cursor: pointer;
-  box-shadow: 0 2.5px 0 #DEC0A6;
+  box-shadow: 0 2.5px 0 var(--cocoa);
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  flex-shrink: 0;
+  box-sizing: border-box;
   transition:
     transform 0.2s var(--soft-ease),
     border-color 0.18s ease,
@@ -110,18 +135,19 @@ html, body {
 }
 
 .critter-chip:hover {
-  transform: translateY(-2px) scale(1.06);
-  border-color: #B88B6A;
-  box-shadow: 0 4px 8px rgba(110, 75, 50, 0.14);
+  transform: translateY(-2.5px) scale(0.96, 1.06);
+  border-color: var(--cocoa);
+  box-shadow: 0 4px 8px rgba(92, 61, 46, 0.18);
 }
 
 .critter-chip:active {
-  transform: translateY(1px) scale(0.96);
+  transform: translateY(2px) scale(1.08, 0.92);
+  box-shadow: 0 1px 0 var(--cocoa);
 }
 
 .critter-chip img {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   object-fit: cover;
   display: block;
@@ -154,19 +180,22 @@ html, body {
 }
 
 .pill-btn, .star-badge {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
-  background: linear-gradient(180deg, #FFFDF9 0%, #FAF0E4 100%);
-  border: 2.5px solid #D4B094;
+  background: linear-gradient(180deg, #FFFDF9 0%, #FAF3EB 100%);
+  border: 2.5px solid var(--cocoa);
   border-radius: 999px;
   padding: 4px 12px;
+  min-height: 48px;
+  min-width: 48px;
+  box-sizing: border-box;
   font-size: 18px;
   font-weight: 800;
   color: var(--cocoa);
   cursor: pointer;
-  box-shadow: 0 3px 0 #D4B094, 0 4px 8px rgba(92, 61, 46, 0.06);
+  box-shadow: 0 3px 0 var(--cocoa), 0 4px 8px rgba(92, 61, 46, 0.08);
   transition:
     transform 0.18s var(--soft-ease),
     box-shadow 0.18s var(--soft-ease),
@@ -175,17 +204,21 @@ html, body {
 }
 
 .pill-btn.icon-only {
-  padding: 4px 8px;
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  min-height: 52px;
+  padding: 4px;
 }
 
 .pill-btn:hover {
-  transform: translateY(-1.5px) scale(1.03);
+  transform: translateY(-2px) scale(0.97, 1.04);
   border-color: var(--cocoa);
-  box-shadow: 0 4px 0 var(--cocoa), 0 6px 10px rgba(92, 61, 46, 0.12);
+  box-shadow: 0 4px 0 var(--cocoa), 0 6px 10px rgba(92, 61, 46, 0.14);
 }
 
 .pill-btn:active {
-  transform: translateY(1.5px) scale(0.95);
+  transform: translateY(2px) scale(1.07, 0.91);
   box-shadow: 0 1px 0 var(--cocoa);
 }
 
@@ -216,16 +249,17 @@ html, body {
 /* 2. Center Interactive Patisserie Stage */
 .canvas-stage {
   position: relative;
-  flex: 1 1 auto;
-  min-height: 240px;
-  background: #FDF8F2;
-  border: 3px solid #C9A384;
+  flex: 1 1 0;
+  min-height: 0;
+  background: var(--cream-linen);
+  border: 3.5px solid var(--cocoa);
   border-radius: 26px;
   overflow: hidden;
+  box-sizing: border-box;
   box-shadow:
     inset 0 0 32px rgba(165, 115, 78, 0.14),
     inset 0 2px 0 rgba(255, 255, 255, 0.8),
-    0 8px 20px rgba(110, 75, 50, 0.1);
+    0 8px 20px rgba(92, 61, 46, 0.14);
 }
 
 .canvas-stage::after {
@@ -259,7 +293,10 @@ html, body {
   background: linear-gradient(180deg, #F6B2A6 0%, #E88775 55%, #DC6E5B 100%);
   border: 3px solid var(--cocoa);
   border-radius: 999px;
-  padding: 5px 15px;
+  padding: 6px 16px;
+  min-height: 48px;
+  min-width: 64px;
+  box-sizing: border-box;
   cursor: pointer;
   z-index: 5;
   box-shadow:
@@ -275,7 +312,7 @@ html, body {
 
 .floating-action-btn:hover {
   animation-play-state: paused;
-  transform: translateY(-2px) scale(1.04);
+  transform: translateY(-2.5px) scale(0.96, 1.05);
   box-shadow:
     0 5px 0 var(--cocoa),
     0 10px 20px rgba(220, 110, 91, 0.3),
@@ -285,8 +322,8 @@ html, body {
 
 .floating-action-btn:active {
   animation-play-state: paused;
-  transform: translateY(2px) scale(0.96);
-  box-shadow: 0 2px 0 var(--cocoa), 0 4px 8px rgba(92, 61, 46, 0.16);
+  transform: translateY(3px) scale(1.10, 0.88);
+  box-shadow: 0 1.5px 0 var(--cocoa), 0 4px 8px rgba(92, 61, 46, 0.16);
 }
 
 .floating-action-btn canvas {
@@ -306,37 +343,77 @@ html, body {
   }
 }
 
+.floating-action-btn.ready-advance {
+  animation: readyPulse 1.2s infinite ease-in-out;
+  background: linear-gradient(180deg, #FFD166 0%, #F5A623 55%, #E28800 100%);
+  box-shadow:
+    0 4px 0 var(--cocoa),
+    0 8px 24px rgba(245, 166, 35, 0.55),
+    inset 0 2px 0 rgba(255, 255, 255, 0.7);
+}
+
+@keyframes readyPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow:
+      0 4px 0 var(--cocoa),
+      0 8px 20px rgba(245, 166, 35, 0.45),
+      inset 0 2px 0 rgba(255, 255, 255, 0.6);
+  }
+  50% {
+    transform: scale(1.08) translateY(-3px);
+    box-shadow:
+      0 6px 0 var(--cocoa),
+      0 14px 28px rgba(245, 166, 35, 0.75),
+      inset 0 2px 0 rgba(255, 255, 255, 0.9);
+  }
+}
+
 /* 3. Ingredient Shelf & Decoration Toolbar */
 .bottom-shelf-panel {
-  background: linear-gradient(180deg, #FFFDFB 0%, #FAF2E7 100%);
-  border: 2.5px solid #D9B89C;
+  background: linear-gradient(180deg, #FFFDF9 0%, var(--cream-linen) 100%);
+  border: 2.5px solid var(--cocoa);
   border-radius: 22px;
-  padding: 7px 14px;
+  padding: 6px 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
   flex-shrink: 0;
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow: hidden;
   box-shadow:
-    0 4px 12px rgba(110, 75, 50, 0.07),
+    0 4px 12px rgba(92, 61, 46, 0.1),
     inset 0 2px 0 rgba(255, 255, 255, 0.85);
 }
 
 .cat-tabs, .decor-modes {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   justify-content: center;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px;
+  flex-shrink: 0;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 .cat-tab, .decor-mode-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #FAF1E6;
-  border: 2.5px solid #DEC0A6;
+  background: var(--cream-linen);
+  border: 2.5px solid var(--cocoa);
   border-radius: 999px;
-  padding: 3px 16px;
+  padding: 6px 16px;
+  min-height: 48px;
+  min-width: 48px;
+  box-sizing: border-box;
   cursor: pointer;
-  box-shadow: 0 2.5px 0 #DEC0A6;
+  flex-shrink: 0;
+  box-shadow: 0 2.5px 0 var(--cocoa);
   transition:
     transform 0.18s var(--soft-ease),
     background 0.15s ease,
@@ -345,13 +422,13 @@ html, body {
 }
 
 .cat-tab:hover, .decor-mode-btn:hover {
-  transform: translateY(-1.5px) scale(1.03);
-  border-color: #B58969;
-  box-shadow: 0 3.5px 0 #B58969;
+  transform: translateY(-2px) scale(0.98, 1.03);
+  border-color: var(--cocoa);
+  box-shadow: 0 3.5px 0 var(--cocoa);
 }
 
 .cat-tab:active, .decor-mode-btn:active {
-  transform: translateY(1.5px) scale(0.96);
+  transform: translateY(2px) scale(1.06, 0.92);
   box-shadow: 0 1px 0 var(--cocoa);
 }
 
@@ -370,22 +447,35 @@ html, body {
 
 .ingredient-shelf, .decor-options {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   justify-content: center;
+  align-items: center;
   flex-wrap: wrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 .ing-card {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  height: 52px;
-  background: linear-gradient(180deg, #FFFFFF 0%, #FAF2E6 100%);
-  border: 2.5px solid #DEC0A6;
+  width: 60px;
+  height: 54px;
+  min-width: 52px;
+  min-height: 52px;
+  background: linear-gradient(180deg, #FFFFFF 0%, var(--cream-linen) 100%);
+  border: 2.5px solid var(--cocoa);
   border-radius: 18px;
-  cursor: pointer;
-  box-shadow: 0 3px 0 #DEC0A6, 0 4px 8px rgba(92, 61, 46, 0.05);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  box-shadow: 0 3px 0 var(--cocoa), 0 4px 8px rgba(92, 61, 46, 0.08);
   animation: ingPopIn 0.25s var(--soft-ease) both;
   transition:
     transform 0.18s var(--soft-ease),
@@ -414,14 +504,14 @@ html, body {
 }
 
 .ing-card:hover {
-  transform: translateY(-2px) scale(1.04);
+  transform: translateY(-2.5px) scale(0.97, 1.05);
   border-color: var(--cocoa);
   background: #FFF9F0;
-  box-shadow: 0 4.5px 0 var(--cocoa), 0 8px 12px rgba(92, 61, 46, 0.12);
+  box-shadow: 0 4.5px 0 var(--cocoa), 0 8px 12px rgba(92, 61, 46, 0.14);
 }
 
 .ing-card:active {
-  transform: translateY(1.5px) scale(0.95);
+  transform: translateY(2.5px) scale(1.08, 0.90);
   border-color: var(--cocoa);
   box-shadow: 0 1px 0 var(--cocoa);
 }
@@ -430,12 +520,19 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #FAF1E6;
-  border: 2.5px solid #DEC0A6;
+  background: var(--cream-linen);
+  border: 2.5px solid var(--cocoa);
   border-radius: 999px;
-  padding: 4px 12px;
-  cursor: pointer;
-  box-shadow: 0 2.5px 0 #DEC0A6;
+  padding: 6px 12px;
+  min-height: 48px;
+  min-width: 48px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  box-shadow: 0 2.5px 0 var(--cocoa);
   animation: ingPopIn 0.22s var(--soft-ease) both;
   transition:
     transform 0.18s var(--soft-ease),
@@ -444,13 +541,14 @@ html, body {
 }
 
 .swatch-btn:hover {
-  transform: translateY(-1.5px) scale(1.04);
+  transform: translateY(-2px) scale(0.97, 1.04);
   border-color: var(--cocoa);
   box-shadow: 0 3.5px 0 var(--cocoa);
 }
 
 .swatch-btn:active {
-  transform: translateY(1px) scale(0.95);
+  transform: translateY(2px) scale(1.08, 0.90);
+  box-shadow: 0 1px 0 var(--cocoa);
 }
 
 .swatch-btn.active {
@@ -466,24 +564,38 @@ html, body {
   display: block;
 }
 
-/* 4. Bottom 5-Station Patisserie Dock */
+/* 4. Bottom Station Patisserie Dock (Supports 5 or 10 Stations) */
 .station-dock {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
   flex-shrink: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 0;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
 }
 
 .station-btn {
+  flex: 1 1 0;
+  min-width: 48px;
+  min-height: 48px;
+  height: 52px;
+  max-width: 240px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, #FFFDFB 0%, #F7EDE0 100%);
-  border: 2.5px solid #D9B89C;
+  background: linear-gradient(180deg, #FFFDF9 0%, var(--cream-linen) 100%);
+  border: 2.5px solid var(--cocoa);
   border-radius: 20px;
   padding: 5px;
+  box-sizing: border-box;
   cursor: pointer;
-  box-shadow: 0 3.5px 0 #D9B89C, 0 4px 8px rgba(92, 61, 46, 0.05);
+  box-shadow: 0 3.5px 0 var(--cocoa), 0 4px 8px rgba(92, 61, 46, 0.08);
   transition:
     transform 0.18s var(--soft-ease),
     background 0.15s ease,
@@ -491,14 +603,31 @@ html, body {
     box-shadow 0.18s var(--soft-ease);
 }
 
+.station-btn.locked {
+  opacity: 0.65;
+  filter: grayscale(0.25);
+}
+
+@keyframes lockWiggle {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px) rotate(-3deg); }
+  40% { transform: translateX(4px) rotate(3deg); }
+  60% { transform: translateX(-3px) rotate(-2deg); }
+  80% { transform: translateX(2px) rotate(1deg); }
+}
+
+.station-btn.wiggling {
+  animation: lockWiggle 0.35s ease;
+}
+
 .station-btn:hover {
-  transform: translateY(-2px) scale(1.02);
+  transform: translateY(-2px) scale(0.98, 1.04);
   border-color: var(--cocoa);
-  box-shadow: 0 4.5px 0 var(--cocoa), 0 8px 12px rgba(92, 61, 46, 0.11);
+  box-shadow: 0 4.5px 0 var(--cocoa), 0 8px 12px rgba(92, 61, 46, 0.14);
 }
 
 .station-btn:active {
-  transform: translateY(1.5px) scale(0.96);
+  transform: translateY(2px) scale(1.06, 0.92);
   box-shadow: 0 1px 0 var(--cocoa);
 }
 
@@ -584,6 +713,15 @@ html, body {
   justify-content: space-between;
 }
 
+.modal-header .pill-btn,
+#closeAlbumBtn {
+  min-width: 52px;
+  min-height: 52px;
+  width: 52px;
+  height: 52px;
+  padding: 2px;
+}
+
 .album-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
@@ -593,11 +731,11 @@ html, body {
 }
 
 .album-card {
-  background: #FFFDF9;
-  border: 2.5px solid #D9B89C;
+  background: var(--cream-linen);
+  border: 2.5px solid var(--cocoa);
   border-radius: 16px;
   padding: 10px 10px 8px 10px;
-  box-shadow: 0 5px 12px rgba(92, 61, 46, 0.08);
+  box-shadow: 0 5px 12px rgba(92, 61, 46, 0.12);
   animation: ingPopIn 0.28s var(--soft-ease) both;
   transition: transform 0.2s var(--soft-ease), box-shadow 0.2s var(--soft-ease);
 }
@@ -630,10 +768,242 @@ html, body {
   object-fit: cover;
 }
 
+.album-reaction-sticker {
+  width: 32px;
+  height: 32px;
+  filter: drop-shadow(0 2px 5px rgba(92, 61, 46, 0.16));
+  transform: rotate(-6deg);
+  transition: transform 0.2s var(--soft-ease);
+}
+
+.album-card:hover .album-reaction-sticker {
+  transform: scale(1.15) rotate(4deg);
+}
+
 .album-empty {
   grid-column: 1 / -1;
   display: flex;
   justify-content: center;
   padding: 28px;
   animation: ingPopIn 0.28s var(--soft-ease) both;
+}
+
+.ing-card:active, .swatch-btn:active {
+  cursor: grabbing;
+}
+
+.prep-tray-overlay canvas {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.prep-tray-overlay canvas:active {
+  cursor: grabbing;
+}
+
+/* ==========================================================================
+ * Responsive Viewports & Kid Ergonomics (Zero Scroll, Touch Targets >= 48px)
+ * 1. Desktop: 1280x800
+ * 2. Tablet: 768x1024
+ * 3. Mobile Portrait: 390x844
+ * 4. Mobile Landscape: 844x390
+ * ========================================================================== */
+
+/* Mobile Portrait (<= 640px width, e.g. 390x844) */
+@media (max-width: 640px) {
+  .kitchen-app {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+  .top-header {
+    padding: 3px 8px;
+    gap: 6px;
+    border-radius: 18px;
+    min-height: 50px;
+  }
+  .brand-badge canvas {
+    width: 48px;
+    height: 28px;
+  }
+  .customer-strip {
+    gap: 6px;
+  }
+  .critter-chip {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+  }
+  .top-actions {
+    gap: 4px;
+  }
+  .pill-btn, .star-badge {
+    padding: 2px 8px;
+    min-height: 48px;
+    min-width: 48px;
+    font-size: 15px;
+  }
+  .pill-btn.icon-only {
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    min-height: 52px;
+    padding: 2px;
+  }
+  .canvas-stage {
+    border-radius: 20px;
+    border-width: 2.5px;
+  }
+  .bottom-shelf-panel {
+    padding: 5px 8px;
+    gap: 5px;
+    border-radius: 18px;
+  }
+  .cat-tabs, .decor-modes {
+    justify-content: flex-start;
+    padding: 2px 0;
+    gap: 6px;
+  }
+  .cat-tab, .decor-mode-btn {
+    min-height: 48px;
+    min-width: 48px;
+    padding: 4px 12px;
+  }
+  .ingredient-shelf, .decor-options {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    padding: 2px 0;
+    gap: 6px;
+  }
+  .ing-card {
+    width: 56px;
+    height: 52px;
+    min-width: 50px;
+    min-height: 50px;
+  }
+  .station-dock {
+    gap: 6px;
+    justify-content: flex-start;
+  }
+  .station-btn {
+    flex: 0 0 auto;
+    min-width: 58px;
+    min-height: 48px;
+    height: 48px;
+    border-radius: 16px;
+    padding: 3px;
+  }
+  .station-btn canvas {
+    width: 40px;
+    height: 30px;
+  }
+}
+
+/* Mobile Landscape & Short Viewports (<= 520px height, e.g. 844x390) */
+@media (max-height: 520px) {
+  .kitchen-app {
+    padding: 3px 6px;
+    gap: 3px;
+  }
+  .top-header {
+    padding: 2px 6px;
+    border-radius: 12px;
+    min-height: 48px;
+    gap: 4px;
+  }
+  .brand-badge canvas {
+    width: 50px;
+    height: 28px;
+  }
+  .critter-chip {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+  }
+  .top-actions {
+    gap: 4px;
+  }
+  .pill-btn, .star-badge {
+    min-height: 48px;
+    min-width: 48px;
+    height: 48px;
+    padding: 2px 8px;
+    font-size: 15px;
+  }
+  .pill-btn.icon-only {
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    min-height: 52px;
+    padding: 2px;
+  }
+  .canvas-stage {
+    min-height: 120px;
+    border-radius: 16px;
+    border-width: 2px;
+  }
+  .floating-action-btn {
+    bottom: 8px;
+    right: 10px;
+    min-height: 48px;
+    padding: 4px 12px;
+  }
+  .floating-action-btn canvas {
+    width: 56px;
+    height: 32px;
+  }
+  .bottom-shelf-panel {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3px 8px;
+    gap: 8px;
+    border-radius: 14px;
+  }
+  .cat-tabs, .decor-modes {
+    flex-shrink: 0;
+    gap: 6px;
+    padding: 0;
+  }
+  .cat-tab, .decor-mode-btn {
+    min-height: 48px;
+    min-width: 48px;
+    padding: 4px 10px;
+  }
+  .cat-tab canvas, .decor-mode-btn canvas {
+    width: 56px;
+    height: 26px;
+  }
+  .ingredient-shelf, .decor-options {
+    flex: 1 1 0;
+    min-width: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-end;
+    gap: 6px;
+    padding: 0;
+  }
+  .ing-card {
+    width: 54px;
+    height: 52px;
+    min-width: 50px;
+    min-height: 50px;
+  }
+  .station-dock {
+    gap: 4px;
+    padding: 0;
+  }
+  .station-btn {
+    min-width: 48px;
+    min-height: 48px;
+    height: 48px;
+    border-radius: 14px;
+    padding: 3px;
+  }
+  .station-btn canvas {
+    width: 42px;
+    height: 30px;
+  }
 }

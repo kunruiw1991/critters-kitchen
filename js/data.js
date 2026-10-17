@@ -75,10 +75,10 @@ const KitchenData = (() => {
   // `neutral` = never tints the batter (dough, milk, egg, ice cream).
   // `rainbow` = the magic rainbow batter (six-layer rainbow sponge).
   const INGREDIENTS = [
-    // 1. Fruit (the colourful heroes of the HT Mini Cakes strawberry episode)
+    // 1. Fruit (the colourful heroes of the HT Mini Cakes strawberry episode + velcro slicing set)
     { id: 'strawberry', cat: 'fruit', emoji: '🍓', zh: '鲜草莓', en: 'Strawberry',
       color: '#ff385c', inner: '#ffd1dc', rim: '#d91b42', sliceStyle: 'strawberry',
-      batter: '#FF5A79', cream: '#FFB3C6',
+      batter: '#FF5A79', cream: '#FFB3C6', velcro: true,
       choppable: true, grillable: false, sweet: 2, fruity: 2 },
     { id: 'banana', cat: 'fruit', emoji: '🍌', zh: '香蕉', en: 'Banana',
       color: '#ffe042', inner: '#fff8c4', rim: '#e0b81b', sliceStyle: 'banana',
@@ -90,8 +90,12 @@ const KitchenData = (() => {
       choppable: true, grillable: false, sweet: 1, fruity: 2 },
     { id: 'kiwi', cat: 'fruit', emoji: '🥝', zh: '奇异果', en: 'Kiwi',
       color: '#68d442', inner: '#c4f7a8', rim: '#8c6239', sliceStyle: 'kiwi',
-      batter: '#70D66B', cream: '#C9F2C1',
+      batter: '#70D66B', cream: '#C9F2C1', velcro: true,
       choppable: true, grillable: false, sweet: 1, sour: 1, fruity: 2 },
+    { id: 'watermelon', cat: 'fruit', emoji: '🍉', zh: '甜西瓜', en: 'Watermelon',
+      color: '#ff425b', inner: '#ff8598', rim: '#2e9e4f', sliceStyle: 'watermelon',
+      batter: '#FF5E78', cream: '#FFC2CC', velcro: true,
+      choppable: true, grillable: false, sweet: 3, fruity: 3 },
     { id: 'peach', cat: 'fruit', emoji: '🍑', zh: '水蜜桃', en: 'Peach',
       color: '#ff8da8', inner: '#ffe2b8', rim: '#e85d82', sliceStyle: 'peach',
       batter: '#FFB08A', cream: '#FFD9C4',
@@ -105,6 +109,7 @@ const KitchenData = (() => {
     { id: 'dough', cat: 'magic', emoji: '🎂', zh: '海绵蛋糕糊', en: 'Sponge Cake Mix',
       color: '#fff1c2', inner: '#fffbee', rim: '#e2c578', sliceStyle: 'dough',
       batter: '#FFF1C2', cream: '#FFFDF9', neutral: true,
+      rollable: true, stampable: true, stampShapes: ['star', 'heart', 'bear'],
       choppable: false, grillable: true, bakeable: true, cookedColor: '#e69c3a', sweet: 2, baseType: 'pancake' },
     { id: 'milk', cat: 'magic', emoji: '🥛', zh: '鲜牛奶', en: 'Fresh Milk',
       color: '#ffffff', inner: '#e8f6ff', rim: '#b8d8f0', sliceStyle: 'liquid',
@@ -160,8 +165,20 @@ const KitchenData = (() => {
       color: '#d95338', inner: '#ffab99', rim: '#992d17', sliceStyle: 'sausage',
       batter: '#D9695A', cream: '#F2C2B8',
       choppable: true, grillable: true, cookedColor: '#872612', savory: 2 },
+    { id: 'maki', cat: 'meat', emoji: '🍣', zh: '竹帘紫菜寿司卷', en: 'Sushi Maki Roll',
+      color: '#283E30', inner: '#FF8466', rim: '#1B2B21', sliceStyle: 'maki',
+      batter: '#FFF8EC', cream: '#FFFDF9',
+      rollable: true, choppable: true, grillable: false, savory: 3, baseType: 'bento' },
 
     // 4. Dough & Veggies
+    { id: 'bread', cat: 'veggie', emoji: '🍞', zh: '北海道吐司', en: 'Milk Toast Bread',
+      color: '#f5d69e', inner: '#fff8e3', rim: '#c4863c', sliceStyle: 'bread',
+      batter: '#F7DFB0', cream: '#FFF8E3', neutral: true, toastable: true,
+      choppable: true, grillable: true, bakeable: true, cookedColor: '#d17b24', savory: 1, sweet: 2, baseType: 'toast' },
+    { id: 'butter', cat: 'veggie', emoji: '🧈', zh: '金黄黄油块', en: 'Golden Butter Pat',
+      color: '#ffe36e', inner: '#fff4ad', rim: '#d9ae2b', sliceStyle: 'butter',
+      batter: '#FFE985', cream: '#FFF7C2', neutral: true, spreadable: true,
+      choppable: true, grillable: true, bakeable: true, cookedColor: '#f5be2e', savory: 2, sweet: 1 },
     { id: 'bun', cat: 'veggie', emoji: '🍔', zh: '汉堡面包', en: 'Burger Bun',
       color: '#e69838', inner: '#fff0c4', rim: '#b86f18', sliceStyle: 'bun',
       batter: '#E6A85C', cream: '#FFF0C4', neutral: true,
@@ -172,8 +189,16 @@ const KitchenData = (() => {
       choppable: false, grillable: true, bakeable: true, cookedColor: '#e39636', savory: 2, baseType: 'pizza' },
     { id: 'tomato', cat: 'veggie', emoji: '🍅', zh: '红番茄', en: 'Tomato',
       color: '#ff3636', inner: '#ff8a8a', rim: '#bd1919', sliceStyle: 'tomato',
-      batter: '#FF6B5C', cream: '#FFC2B8',
+      batter: '#FF6B5C', cream: '#FFC2B8', velcro: true,
       choppable: true, grillable: true, cookedColor: '#d92626', savory: 2, fruity: 1 },
+    { id: 'carrot', cat: 'veggie', emoji: '🥕', zh: '脆胡萝卜', en: 'Crisp Carrot',
+      color: '#ff7b24', inner: '#ffba7a', rim: '#d95b08', sliceStyle: 'carrot',
+      batter: '#FF8E42', cream: '#FFD4B0', velcro: true,
+      choppable: true, grillable: true, cookedColor: '#d95e14', savory: 2, sweet: 1 },
+    { id: 'corn', cat: 'veggie', emoji: '🌽', zh: '甜玉米', en: 'Sweet Corn',
+      color: '#ffd633', inner: '#fff3a8', rim: '#58b348', sliceStyle: 'corn',
+      batter: '#FFE052', cream: '#FFF5BA', velcro: true,
+      choppable: true, grillable: true, cookedColor: '#e0a816', savory: 2, sweet: 2 },
     { id: 'lettuce', cat: 'veggie', emoji: '🥬', zh: '脆生菜', en: 'Crisp Lettuce',
       color: '#54d454', inner: '#b4f5b4', rim: '#2da12d', sliceStyle: 'leaf',
       batter: '#8EDB7A', cream: '#D4F5C8',
@@ -182,6 +207,10 @@ const KitchenData = (() => {
       color: '#ff1a1a', inner: '#ff7b00', rim: '#b80000', sliceStyle: 'chili',
       batter: '#FF4D3D', cream: '#FFC2B8',
       choppable: true, grillable: true, cookedColor: '#cc0000', spicy: 5 },
+    { id: 'kettle_tea', cat: 'veggie', emoji: '🫖', zh: '鸣笛茶壶绿茶', en: 'Whistling Kettle Tea',
+      color: '#78C47C', inner: '#C9F2BE', rim: '#4E8C58', sliceStyle: 'liquid',
+      batter: '#A8E096', cream: '#E2F7D8',
+      liquid: true, kettle: true, choppable: false, grillable: true, cookedColor: '#5EA862', sweet: 1, sleepy: 2 },
   ];
 
   // Six-colour rainbow (video order on the rosette cake: red at the top).
@@ -218,7 +247,9 @@ const KitchenData = (() => {
     { id: 'blueberry_sauce',  zh: '🫐 蓝莓淋酱', color: '#5B7CFF', hi: '#B8C6FF' },
     { id: 'lemon_glaze',      zh: '🍋 柠檬糖霜', color: '#FFE94D', hi: '#FFF7B0' },
     { id: 'matcha_glaze',     zh: '🍵 抹茶淋面', color: '#7CD36C', hi: '#C9F2BE' },
-    { id: 'cheese_sauce',     zh: '🧀 浓香芝士酱', color: '#FFC400', hi: '#FFF099' },
+    { id: 'cheese_sauce',     zh: '🧀 浓香芝士酱', color: '#FFC400', hi: '#FFF099', condiment: true },
+    { id: 'ketchup_sauce',    zh: '🍅 酸甜番茄酱', color: '#E3392B', hi: '#FF948A', condiment: true },
+    { id: 'mustard_sauce',    zh: '🌭 黄金芥末酱', color: '#F5C422', hi: '#FFF2A6', condiment: true },
   ];
 
   // Toppings: tweezers-placed candy balls, fresh fruit slices (drawn with the
@@ -338,9 +369,22 @@ const KitchenData = (() => {
       icons: ['🍔', '🥩', '🧀'],
       wantIds: ['bun', 'beef', 'cheese'],
       wantCooking: 'pan',
-      wantDecor: false,
+      wantDecor: true,
       cakeStyle: null,
-      desc: '把牛排煎得滋滋响，叠上汉堡面包和黄金芝士！',
+      baseKind: 'burger',
+      desc: '把牛排煎得滋滋响，叠上汉堡面包、生菜、番茄、黄金芝士，再挤上番茄芥末酱！',
+    },
+    {
+      id: 'bento_sushi_meal',
+      zh: '竹帘寿司便当盒配鸣笛热茶', en: 'Sushi Maki Bento & Whistling Tea',
+      critter: 'catnap',
+      icons: ['🍣', '🍤', '🫖'],
+      wantIds: ['maki', 'shrimp', 'kettle_tea'],
+      wantCooking: 'pan',
+      wantDecor: true,
+      cakeStyle: null,
+      baseKind: 'bento',
+      desc: '用竹帘卷好紫菜三文鱼寿司并切成花卷，装进漆器便当盒，再烧开鸣笛茶壶倒一杯热绿茶！',
     },
     {
       id: 'kiwi_berry_sundae',
@@ -385,6 +429,17 @@ const KitchenData = (() => {
       wantDecor: true,
       cakeStyle: null,
       desc: '把水蜜桃、冰淇淋和云朵跳跳糖放进榨汁机打成冰沙！',
+    },
+    {
+      id: 'sizzling_sausage_egg',
+      zh: '滋滋双灶煎蛋香肠配鲜蔬浓汤', en: 'Sizzling Sausage, Sunny Egg & Boiling Soup',
+      critter: 'dogday',
+      icons: ['🥚', '🌭', '🌽'],
+      wantIds: ['egg', 'sausage', 'corn'],
+      wantCooking: 'pan',
+      wantDecor: false,
+      cakeStyle: null,
+      desc: '旋开双灶温度旋钮，左灶咕嘟咕嘟煮鲜蔬汤冒蒸汽，右灶平底锅煎太阳蛋、翻炒滋滋小香肠！',
     },
   ];
 
@@ -523,10 +578,254 @@ const KitchenData = (() => {
     return best;
   }
 
+  // Slice 9 (48:00 - 54:00): Sparkling Dishwashing Chore & Kitchen Cleanup
+  const CLEANUP_CHORES = [
+    { id: 'scrub', icon: 'sponge',      color: '#FFE066', accent: '#7CE0F9' },
+    { id: 'rinse', icon: 'faucet',      color: '#8CD7F7', accent: '#E8F7FF' },
+    { id: 'rack',  icon: 'drying_rack', color: '#E8C39E', accent: '#FAF3EB' },
+    { id: 'bins',  icon: 'recycle_bin', color: '#78C87E', accent: '#FF9A62' },
+  ];
+
+  const DRYING_RACK_SLOTS = [
+    { id: 'plate_lg', kind: 'plate',  rx: 46, ry: 46, slotX: -84, slotY: -12, color: '#FAF3EB', rim: '#F2A7B5' },
+    { id: 'plate_sm', kind: 'saucer', rx: 38, ry: 38, slotX: -28, slotY: -16, color: '#FFF7E8', rim: '#7EC8E3' },
+    { id: 'bowl',     kind: 'bowl',   rx: 40, ry: 28, slotX: 28,  slotY: -8,  color: '#E8F7F0', rim: '#6BCB77' },
+    { id: 'cup',      kind: 'cup',    rx: 26, ry: 34, slotX: 82,  slotY: -10, color: '#FFE5EC', rim: '#FF85A2' },
+  ];
+
+  // Waste & recyclable items causally derived from cooked ingredients
+  const WASTE_ITEMS = [
+    { id: 'milk_carton',   bin: 'recycle', kind: 'carton',  color: '#88D4F7', accent: '#FFFFFF', sourceIds: ['milk', 'icecream', 'cream'] },
+    { id: 'berry_punnet',  bin: 'recycle', kind: 'punnet',  color: '#B8E8FC', accent: '#FF6B8B', sourceIds: ['strawberry', 'blueberry'] },
+    { id: 'honey_jar',     bin: 'recycle', kind: 'jar',     color: '#FFD166', accent: '#F4A261', sourceIds: ['honey', 'lemon', 'mango'] },
+    { id: 'cocoa_tin',     bin: 'recycle', kind: 'tin',     color: '#B07D56', accent: '#E8C59B', sourceIds: ['cocoa', 'chocolate', 'matcha', 'boba'] },
+    { id: 'banana_peel',   bin: 'trash',   kind: 'peel',    color: '#FFE066', accent: '#C99E32', sourceIds: ['banana', 'mango', 'lemon'] },
+    { id: 'eggshell_half', bin: 'trash',   kind: 'shell',   color: '#FFF5E4', accent: '#F0D5B8', sourceIds: ['egg', 'dough', 'pizzabase'] },
+    { id: 'veggie_stems',  bin: 'trash',   kind: 'stems',   color: '#52B788', accent: '#FF5A79', sourceIds: ['strawberry', 'tomato', 'carrot', 'broccoli', 'corn', 'chili'] },
+    { id: 'cheese_rind',   bin: 'trash',   kind: 'wrapper', color: '#FFCA3A', accent: '#FF924C', sourceIds: ['cheese', 'sausage', 'popcandy', 'sprinkles'] },
+  ];
+
+  function cleanupItemsForIds(ids) {
+    const used = new Set(Array.isArray(ids) ? ids : []);
+    const matchedRecycle = WASTE_ITEMS.filter(w => w.bin === 'recycle' && w.sourceIds.some(s => used.has(s)));
+    const matchedTrash = WASTE_ITEMS.filter(w => w.bin === 'trash' && w.sourceIds.some(s => used.has(s)));
+    const rec = matchedRecycle.length >= 2
+      ? matchedRecycle.slice(0, 2)
+      : [...matchedRecycle, ...WASTE_ITEMS.filter(w => w.bin === 'recycle' && !matchedRecycle.includes(w))].slice(0, 2);
+    const trs = matchedTrash.length >= 2
+      ? matchedTrash.slice(0, 2)
+      : [...matchedTrash, ...WASTE_ITEMS.filter(w => w.bin === 'trash' && !matchedTrash.includes(w))].slice(0, 2);
+    return [rec[0], trs[0], rec[1], trs[1]].map((item, idx) => ({
+      ...item,
+      slotIdx: idx,
+    }));
+  }
+
+  // Slice 2 (06:00 - 12:00): Ice Cream Parlor Flavors, Pet Fish Aquarium & Doll Care
+  const ICE_CREAM_FLAVORS = [
+    { id: 'strawberry_swirl', ingredient: 'strawberry', color: '#FF7096', hi: '#FFD1DC', shadow: '#D93860', coneRim: '#E8A558' },
+    { id: 'vanilla_bean',     ingredient: 'milk',       color: '#FFF5DC', hi: '#FFFDF9', shadow: '#DEC692', coneRim: '#E8A558' },
+    { id: 'mint_pistachio',   ingredient: 'kiwi',       color: '#88E0A0', hi: '#D4F7DC', shadow: '#4EA868', coneRim: '#E8A558' },
+    { id: 'choco_fudge',      ingredient: 'chocolate',  color: '#6B3E26', hi: '#9C6344', shadow: '#422210', coneRim: '#E8A558' },
+    { id: 'blueberry_cloud',  ingredient: 'blueberry',  color: '#78B0FF', hi: '#CFE2FF', shadow: '#4578CC', coneRim: '#E8A558' },
+    { id: 'mango_peach',      ingredient: 'peach',      color: '#FFB35C', hi: '#FFE4BD', shadow: '#D97F28', coneRim: '#E8A558' },
+  ];
+
+  const AQUARIUM_CONFIG = {
+    waterTop: '#B8EEF5',
+    waterBottom: '#78CEDB',
+    algaeColor: '#6EB874',
+    flakeColors: ['#FFB742', '#FF8552', '#FFD966', '#E86A48'],
+    fish: [
+      { id: 'goldie', body: '#FF8C42', fin: '#FFD166', belly: '#FFE8C2', size: 18 },
+      { id: 'bubbles', body: '#66B2FF', fin: '#BAE0FF', belly: '#F0F8FF', size: 15 },
+    ],
+  };
+
+  const DOLL_CARE_ITEMS = [
+    { id: 'bottle',   color: '#FFFDF9', accent: '#FF94B0' },
+    { id: 'pacifier', color: '#9CD3C2', accent: '#F4CF82' },
+    { id: 'brush',    color: '#E8998D', accent: '#FFFDF9' },
+  ];
+
+  // Slice 10 (54:00 - 61:44): Little Doctor Clinic & Plushie Wellness Care
+  const CLINIC_TOOLS = [
+    { id: 'stethoscope', icon: 'stethoscope', color: '#F4A6B8', accent: '#9CD3C2' },
+    { id: 'thermometer', icon: 'thermometer', color: '#8CC8E8', accent: '#78C47C' },
+    { id: 'bandaid',     icon: 'bandaid',     color: '#F7C59F', accent: '#E87A82' },
+    { id: 'medicine',    icon: 'medicine',    color: '#F29BB0', accent: '#D48C56' },
+    { id: 'brush',       icon: 'brush',       color: '#DEB078', accent: '#F4A6B8' },
+  ];
+
+  const BANDAID_DESIGNS = [
+    { id: 'heart_pink',   padColor: '#FFFDF9', wingColor: '#F7CAD6', icon: 'heart',   accent: '#E85D75' },
+    { id: 'star_gold',    padColor: '#FFFDF9', wingColor: '#FCE8A6', icon: 'star',    accent: '#F7C948' },
+    { id: 'mint_cloud',   padColor: '#FFFDF9', wingColor: '#BDE8D8', icon: 'cloud',   accent: '#68B878' },
+    { id: 'rainbow_care', padColor: '#FFFDF9', wingColor: '#CFE2FF', icon: 'rainbow', accent: '#5D9CEC' },
+  ];
+
+  const MEDICINE_FLAVORS = [
+    { id: 'berry_syrup',  color: '#FF7096', hi: '#FFD1DC', bottle: '#D48C56' },
+    { id: 'honey_elixir', color: '#FFB74D', hi: '#FFF3CC', bottle: '#C87D4B' },
+    { id: 'mint_drops',   color: '#78D6B2', hi: '#D9F7EA', bottle: '#8C9BA5' },
+  ];
+
+  const CLINIC_BOOBOOS = [
+    { id: 'cheek_left',  dx: -54, dy: -4,  angle: -0.22, designId: 'heart_pink' },
+    { id: 'forehead',    dx: 24,  dy: -56, angle: 0.16,  designId: 'star_gold' },
+    { id: 'paw_right',   dx: 62,  dy: 36,  angle: -0.14, designId: 'mint_cloud' },
+  ];
+
+  const CLINIC_FUR_TUFTS = [
+    { id: 'crown_left',  dx: -36, dy: -82, angle: -0.35 },
+    { id: 'crown_mid',   dx: 0,   dy: -90, angle: 0.05 },
+    { id: 'crown_right', dx: 36,  dy: -82, angle: 0.35 },
+    { id: 'cheek_tuft',  dx: -68, dy: -22, angle: -0.55 },
+  ];
+
+  // Slice 3 (12:00 - 18:00): Ultimate Kitchen Playset Unboxing, Modular Assembly, Battery Sound Module & Circulating Water Sink
+  const PLAYSET_PARTS = [
+    { id: 'base_case',        step: 1, color: '#9B82C9', accent: '#FFB3C6', icon: 'playset',  dx: 0,    dy: 32 },
+    { id: 'battery_bay',      step: 2, color: '#FF85A6', accent: '#FFD166', icon: 'battery',  dx: -116, dy: 56 },
+    { id: 'side_wings',       step: 3, color: '#FF94B8', accent: '#FFFDF9', icon: 'plate',    dx: -144, dy: 16 },
+    { id: 'back_hood',        step: 4, color: '#78C2E4', accent: '#FF94B8', icon: 'oven',     dx: 0,    dy: -62 },
+    { id: 'sink_unit',        step: 5, color: '#9CD3C2', accent: '#FFFDF9', icon: 'faucet',   dx: 92,   dy: 22 },
+    { id: 'hanging_utensils', step: 6, color: '#FFD166', accent: '#78C47C', icon: 'spatula',  dx: -36,  dy: -40 },
+  ];
+
+  const SINK_WASH_ITEMS = [
+    { id: 'tomato',     kind: 'veggie', color: '#E84A3B', rim: '#68B878', r: 22, homeX: -62, homeY: 16 },
+    { id: 'carrot',     kind: 'veggie', color: '#F58220', rim: '#68B878', r: 22, homeX: -18, homeY: 22 },
+    { id: 'strawberry', kind: 'fruit',  color: '#FF5A79', rim: '#68B878', r: 20, homeX: 24,  homeY: 18 },
+    { id: 'plate_pink', kind: 'dish',   color: '#FF94B8', rim: '#FFFDF9', r: 26, homeX: -38, homeY: -8 },
+    { id: 'cup_mint',   kind: 'dish',   color: '#9CD3C2', rim: '#FFFDF9', r: 20, homeX: 48,  homeY: -4 },
+  ];
+
+  const PLAYSET_CONFIG = {
+    boxColor: '#78C2E4',
+    boxAccent: '#FF94B8',
+    stoveBaseColor: '#9B82C9',
+    wingColor: '#FF94B8',
+    hoodColor: '#78C2E4',
+    sinkBasinColor: '#FF85A6',
+    sinkDeckColor: '#9CD3C2',
+    faucetColor: '#FFFDF9',
+    waterTop: '#B8EEF5',
+    waterBottom: '#78CEDB',
+    batteryGold: '#FFD166',
+    batteryBody: '#4A5568',
+    spongeColor: '#FFE066',
+    spongeScrubColor: '#68B878',
+  };
+
+  // Slice 4 (18:00 - 24:00): Dual-Burner Stove Top, Clicking Temperature Dials, Boiling Soup Pot & Sizzling Skillet
+  const STOVE_CONFIG = {
+    casingColor: '#FAF3EB',
+    deckTopColor: '#F5E6D6',
+    apronColor: '#E8998D',
+    grateColor: '#5C3D2E',
+    dialAngles: [-0.85, 0.0, 0.85], // Low (1), Med (2), High (3) rotary detent angles
+    burners: [
+      { id: 'left_soup',  role: 'soup_pot',   dx: -124, dy: 28, rx: 76, ry: 34 },
+      { id: 'right_pan',  role: 'skillet',    dx: 76,   dy: 36, rx: 104, ry: 44 },
+    ],
+    soupBroth: {
+      baseColor: '#FFE89E',
+      simmerColor: '#F7C95C',
+      rimColor: '#9CD3C2',
+      defaultVeggies: ['corn', 'carrot', 'tomato'],
+    },
+  };
+
+  // Slice 5 (24:00 - 30:00): Countertop Appliances — Motorized Smoothie Blender, Spring Pop-Up Toaster & Microwave Turntable
+  const COUNTERTOP_APPLIANCES = {
+    blender: {
+      id: 'blender',
+      icon: 'blender',
+      speeds: [1, 2, 3],
+      pitcherTint: 'rgba(232, 248, 255, 0.84)',
+      baseColor: '#9CD3C2',
+      lidColor: '#E8998D',
+      defaultFruits: ['strawberry', 'banana', 'kiwi', 'blueberry', 'peach'],
+    },
+    toaster: {
+      id: 'toaster',
+      icon: 'toaster',
+      slots: 2,
+      bodyColor: '#F4A6B8',
+      trimColor: '#FFFDF9',
+      coilGlowColor: '#FF6B2B',
+      breadRawColor: '#FFF6DC',
+      breadCrustColor: '#C4863C',
+      breadToastedColor: '#D48328',
+      butterColor: '#FFE36E',
+      butterMeltColor: '#FFF29C',
+    },
+    microwave: {
+      id: 'microwave',
+      icon: 'microwave',
+      bodyColor: '#FFFDF9',
+      panelColor: '#9CD3C2',
+      windowGlowColor: '#FFE8A3',
+      turntableColor: 'rgba(220, 244, 252, 0.88)',
+      pipSteps: 3,
+    },
+  };
+
+  // Slice 6 (30:00 - 36:00): Patisserie Bakery Oven & Cookie Stamper
+  const COOKIE_SHAPES = ['star', 'heart', 'bear'];
+  const PATISSERIE_CONFIG = {
+    shapes: COOKIE_SHAPES,
+    cutterColors: {
+      star:  { rim: '#FFD166', body: '#FFE599', hi: '#FFF8D6', plunger: '#F4A261' },
+      heart: { rim: '#FF7096', body: '#FFA6C1', hi: '#FFE0EA', plunger: '#E84A72' },
+      bear:  { rim: '#7EC8E3', body: '#AEDFF2', hi: '#E6F7FC', plunger: '#4FA3C7' },
+    },
+    doughRaw: '#FFF1C2',
+    doughBaked: '#E69C3A',
+    ovenGlow: '#FFB74D',
+  };
+
+  // Slice 8 (42:00 - 48:00): Birthday Celebration Cake — Spinning Turntable, Velcro Cake Slicing with Musical Knife, Birthday Candles & Candy Jar Scoops
+  const BIRTHDAY_CAKE_CONFIG = {
+    maxVelcroWedges: 6,
+    velcroPatchColor: '#FFFDF9',
+    velcroHookColor: '#E5D8C8',
+    candleStripeColors: ['#FF6B8B', '#4ECDC4', '#A17FE0', '#FF9F43', '#54A0FF', '#5CD85A'],
+    candleCollarColors: ['#FFB3C6', '#A8E6CF', '#FFD3B6', '#D4C1EC', '#B5DEFF', '#FFF3B0'],
+    candyJarOffset: { dx: -192, dy: -8, r: 44 },
+    musicalKnifeNotes: [523.25, 523.25, 587.33, 523.25, 698.46, 659.25, 523.25, 523.25, 587.33, 523.25, 783.99, 698.46],
+    subTools: [
+      { id: 'candy_jar',  icon: 'candy_jar',  tool: 'topping', toppingId: 'candy_balls' },
+      { id: 'rosette',    icon: 'rosette',    tool: 'piping' },
+      { id: 'candle',     icon: 'candle',     tool: 'topping', toppingId: 'candle' },
+      { id: 'cake_knife', icon: 'cake_knife', tool: 'knife' },
+    ],
+  };
+
+  // 10-Station Play Loop Configuration (matching 60-min Tina Unboxing Toys video)
+  const STATIONS = [
+    { num: 1,  id: 'grocery',    icon: 'knife',        unlocksAtStars: 0 },
+    { num: 2,  id: 'icecream',   icon: 'scoop',        unlocksAtStars: 0 },
+    { num: 3,  id: 'playset',    icon: 'water_stream',  unlocksAtStars: 0 },
+    { num: 4,  id: 'stove',      icon: 'pan',          unlocksAtStars: 0 },
+    { num: 5,  id: 'appliances', icon: 'blender',      unlocksAtStars: 0 },
+    { num: 6,  id: 'bakery',     icon: 'oven',         unlocksAtStars: 0 },
+    { num: 7,  id: 'bento',      icon: 'bun',          unlocksAtStars: 0 },
+    { num: 8,  id: 'cake',       icon: 'cupcake',      unlocksAtStars: 0 },
+    { num: 9,  id: 'dishes',     icon: 'soapy_bubble',  unlocksAtStars: 0 },
+    { num: 10, id: 'clinic',     icon: 'heart',        unlocksAtStars: 0 },
+  ];
+
   return {
+    STATIONS,
     CRITTERS,
     CATEGORIES,
     INGREDIENTS,
+    CLEANUP_CHORES,
+    DRYING_RACK_SLOTS,
+    WASTE_ITEMS,
+    cleanupItemsForIds,
     PIPING_COLORS,
     SAUCES,
     TOPPINGS,
@@ -537,6 +836,22 @@ const KitchenData = (() => {
     VANILLA_CREAM,
     DARK_CHOCOLATE,
     CAKE_GEOM,
+    ICE_CREAM_FLAVORS,
+    AQUARIUM_CONFIG,
+    DOLL_CARE_ITEMS,
+    CLINIC_TOOLS,
+    BANDAID_DESIGNS,
+    MEDICINE_FLAVORS,
+    CLINIC_BOOBOOS,
+    CLINIC_FUR_TUFTS,
+    PLAYSET_PARTS,
+    SINK_WASH_ITEMS,
+    PLAYSET_CONFIG,
+    STOVE_CONFIG,
+    COUNTERTOP_APPLIANCES,
+    COOKIE_SHAPES,
+    PATISSERIE_CONFIG,
+    BIRTHDAY_CAKE_CONFIG,
     // Unknown ids fall back to the neutral sponge mix (never to chocolate).
     getIngredient: id => byId[id] || byId.dough,
     hasIngredient: id => !!byId[id],
@@ -551,3 +866,7 @@ const KitchenData = (() => {
     pipingIndexForColor,
   };
 })();
+
+if (typeof window !== 'undefined') {
+  window.KitchenData = KitchenData;
+}
