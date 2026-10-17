@@ -69,9 +69,15 @@ const KitchenGame = (() => {
   // Station 4 & 5: Plated Dish State
   let dish = createFreshDish();
   let decorTool = 'piping'; // 'piping' | 'sauce' | 'topping'
-  let pipingColorIdx = 1;
+  let pipingColorIdx = 6;   // white cloud cream until the ingredients pick a theme
   let sauceIdx = 0;
   let toppingIdx = 0;
+  // The player's explicit swatch/tool choices win over the ingredient theme.
+  let pipingColorChosen = false;
+  let sauceChosen = false;
+  let toppingChosen = false;
+  let decorToolChosen = false;
+  let pipelineUid = 0;      // ids for prep entries flowing tray -> bowl -> pan
   let activeStroke = null;
   let hoverPt = { x: 480, y: 360 };
   let dollopPops = [];
@@ -153,7 +159,7 @@ const KitchenGame = (() => {
     // Station 4: HT Mini Cakes spinning turntable & decorating
     turntableAngle: 0,
     turntableVel: 0,
-    cakeStyle: 'candy_balls', // 'candy_balls' | 'rainbow_rosettes'
+    cakeStyle: null, // null | 'candy_balls' | 'rainbow_rosettes' — a tool hint, never a pre-built cake
     pipingAnim: { active: false, t: 0, x: 0, y: 0, color: '#FFFDF9', kind: 'piping', squeeze: 0, shake: 0 },
     toppingSprings: [],
     toolPos: { x: 480, y: 360, vx: 0, vy: 0 },
@@ -286,12 +292,25 @@ const KitchenGame = (() => {
     squashImpulse(sx || 1.28, sy || 0.76);
   }
 
+  // A brand-new dish knows NOTHING: no style, no colours, no decorations.
+  // Every colour below is filled in from the ingredients the player really
+  // used (refreshDishPalette) and every decoration from the player's taps.
   function createFreshDish() {
     return {
       vessel: 'plate',
-      bakedCake: false,
+      baseKind: 'plate',     // 'cake' | 'pancake' | 'jelly' | 'burger' | 'pizza' | 'cup' | 'sundae' | 'plate'
+      bakedCake: false,      // true only after the oven really ran
       liquidColor: null,
       items: [],
+      layerColors: [],       // sponge colours from the actual ingredients
+      batterTint: null,      // blended batter colour of the actual ingredients
+      frostingColor: null,   // cream of the actual ingredients, or the glaze the player poured
+      frostingHi: null,
+      glazeChosen: false,
+      glazeProgress: 0,
+      hasChocolate: false,
+      hasRainbow: false,
+      themeId: null,
       piping: [],
       sauces: [],
       toppings: [],
@@ -299,10 +318,89 @@ const KitchenGame = (() => {
       candyBallCount: 0,
       rosettes: [],
       rosetteCount: 0,
-      cakeStyle: 'candy_balls',
+      cakeStyle: null,
       turntableAngle: 0,
       bitesTaken: 0,
     };
+  }
+
+  /* ==========================================================================
+   * Ingredient Causality: prepTray -> mixItems -> panItems -> dish.items
+   * The dish palette is ALWAYS recomputed from dish.items (what the player
+   * actually chopped / poured / cooked). Nothing is ever injected silently.
+   * ========================================================================== */
+  function dishIngredientIds() {
+    return dish.items.map(it => it.id);
+  }
+
+  // Ids the kitchen falls back to when the player skipped every prep step:
+  // the critter's real order (free play: a strawberry shortcake). Never cocoa
+  // unless the order itself asks for it.
+  function defaultRecipeIds() {
+    if (mode === 'wish') return currentOrder().wantIds.slice();
+    return ['strawberry', 'dough', 'milk'];
+  }
+
+  function computeBaseKind() {
+    const ids = dishIngredientIds();
+    if (dish.vessel === 'cup') return 'cup';
+    if (ids.includes('bun')) return 'burger';
+    if (ids.includes('pizzabase')) return 'pizza';
+    if (dish.bakedCake) return 'cake';
+    const maxCooked = Math.max(0, ...dish.items.map(it => it.cooked || 0));
+    const cookedSomething = maxCooked > 0.3;
+    if (cookedSomething && ids.includes('dough')) return 'pancake';
+    if (cookedSomething && ids.length && ids.every(id => KitchenData.getIngredient(id).cat === 'fruit' || id === 'honey' || id === 'milk')) return 'jelly';
+    if (ids.includes('icecream')) return 'sundae';
+    return 'plate';
+  }
+
+  function refreshDishPalette() {
+    const pal = KitchenData.paletteFor(dishIngredientIds());
+    dish.layerColors = pal.layerColors.slice();
+    dish.batterTint = pal.batterTint;
+    dish.hasChocolate = pal.hasChocolate;
+    dish.hasRainbow = pal.hasRainbow;
+    dish.themeId = pal.themeId;
+    if (!dish.glazeChosen) {
+      dish.frostingColor = pal.frostingColor;
+      dish.frostingHi = KitchenData.mixHex(pal.frostingColor, '#FFFFFF', 0.45);
+    }
+    dish.liquidColor = KitchenData.mixHex(pal.batterTint, '#FFFFFF', 0.12);
+    dish.baseKind = computeBaseKind();
+    dish.candyBallCount = dish.candyBalls.length;
+    dish.rosetteCount = dish.rosettes.length;
+    return pal;
+  }
+
+  function decorCount() {
+    return dish.candyBalls.length + dish.rosettes.length + dish.piping.length + dish.toppings.length + dish.sauces.length;
+  }
+
+  // Shared 3D cake-cylinder coordinates (see KitchenData.CAKE_GEOM):
+  //   side wall: screen x = R * sin(theta + turntableAngle), visible when cos(.) > 0
+  //   top face : screen (R*rad*cos(theta+a), topY + topRy*rad*sin(theta+a))
+  function cylinderCoords(lx, ly) {
+    const G = KitchenData.CAKE_GEOM;
+    const a = state.turntableAngle;
+    const nx = lx / G.radius;
+    const ny = (ly - G.topY) / G.topRy;
+    if (nx * nx + ny * ny <= 1) {
+      return { face: 'top', theta: Math.atan2(ny, nx) - a, rad: Math.sqrt(nx * nx + ny * ny), h: 0 };
+    }
+    return {
+      face: 'side',
+      theta: Math.asin(clamp(nx, -1, 1)) - a,
+      rad: 1,
+      h: clamp01((ly - G.topY) / G.sideHeight),
+    };
+  }
+
+  // Rainbow row colour (red on the top row, purple at the bottom — video order)
+  function rainbowRowColor(cc) {
+    const R = KitchenData.RAINBOW;
+    const k = cc.face === 'top' ? clamp01(cc.rad) * 0.5 : 0.5 + clamp01(cc.h) * 0.5;
+    return R[Math.min(R.length - 1, Math.floor(k * R.length))];
   }
 
   function loadStorage() {
@@ -327,11 +425,44 @@ const KitchenGame = (() => {
     updateAlbumBadge();
   }
 
+  // Zero-text counters: stars & album entries are shown as little pips (and a
+  // heart once the row is full) instead of digits.
+  function paintCountPips(el, count, color) {
+    if (!el) return;
+    el.textContent = '';
+    const n = Math.max(0, Math.floor(Number(count) || 0));
+    const shown = Math.min(5, n);
+    const w = 8 + shown * 10 + (n > 5 ? 14 : 0), h = 18;
+    const cv = document.createElement('canvas');
+    cv.width = w * 2;
+    cv.height = h * 2;
+    cv.style.cssText = 'width:' + w + 'px;height:' + h + 'px;display:inline-block;vertical-align:middle;';
+    cv.setAttribute('aria-hidden', 'true');
+    const c = cv.getContext('2d');
+    c.scale(2, 2);
+    c.strokeStyle = KitchenArt.OUTLINE;
+    c.lineWidth = 1.4;
+    for (let i = 0; i < shown; i++) {
+      c.fillStyle = color;
+      KitchenArt.circ(c, 7 + i * 10, 9, 3.6);
+      c.fill();
+      c.stroke();
+      c.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      KitchenArt.circ(c, 6 + i * 10, 8, 1.3);
+      c.fill();
+    }
+    if (n > 5) {
+      c.fillStyle = color;
+      KitchenArt.heart(c, 8 + shown * 10 + 4, 9, 6);
+      c.fill();
+      c.stroke();
+    }
+    el.appendChild(cv);
+  }
+
   function updateAlbumBadge() {
-    const starEl = document.getElementById('starCount');
-    if (starEl) starEl.textContent = String(starsEarned);
-    const albumEl = document.getElementById('albumCount');
-    if (albumEl) albumEl.textContent = String(album.length);
+    paintCountPips(document.getElementById('starCount'), starsEarned, '#F7C948');
+    paintCountPips(document.getElementById('albumCount'), album.length, '#E88388');
   }
 
   function currentCritter() {
@@ -905,10 +1036,13 @@ const KitchenGame = (() => {
       boardItem.sliced = !!meta.choppable;
       boardItem.cracked = !!meta.crackable;
       prepTray.push({
+        uid: ++pipelineUid,
         id: boardItem.id,
         sliced: boardItem.sliced,
         cracked: boardItem.cracked,
         cooked: 0,
+        inMix: false,
+        inPan: false,
       });
       syncIngredientToPipeline(boardItem.id, boardItem.sliced, boardItem.cracked);
       if (view && canvas) {
@@ -1126,31 +1260,55 @@ const KitchenGame = (() => {
     return { x: pose.x + lx * cs - ly * sn, y: pose.y + lx * sn + ly * cs };
   }
 
+  // Station 1 finished a piece: it goes onto the dish record ONCE. The bowl and
+  // the pan receive it later by transfer (never a second dish entry).
   function syncIngredientToPipeline(id, sliced, cracked) {
-    const meta = KitchenData.getIngredient(id);
-    if (meta.liquid || id === 'dough' || id === 'boba' || id === 'icecream' || meta.cat === 'fruit' || id === 'popcandy') {
-      mixItems.push({ id, sliced, cracked });
-      recomputeMixColor();
-    }
-    if (meta.grillable || meta.bakeable || id === 'egg' || id === 'dough' || id === 'pizzabase') {
-      panItems.push({
-        id,
-        sliced,
-        cracked,
-        x: (Math.random() - 0.5) * 90,
-        y: (Math.random() - 0.5) * 45,
-      });
-    }
-    addIngredientToDish(id, sliced, meta.grillable ? 0.72 : 0, cracked);
+    addIngredientToDish(id, sliced, 0, cracked);
+  }
+
+  // Carry every prepped piece that has not been mixed yet into the bowl.
+  function transferPrepToMixer() {
+    let moved = 0;
+    prepTray.forEach(p => {
+      if (p.inMix || p.inPan) return;
+      p.inMix = true;
+      mixItems.push({ uid: p.uid, id: p.id, sliced: p.sliced, cracked: p.cracked });
+      moved++;
+    });
+    if (moved) recomputeMixColor();
+    return moved;
+  }
+
+  // Carry the batter (mixItems) and any un-mixed prepped pieces into the pan/oven.
+  function transferToCooker() {
+    let moved = 0;
+    const inPan = new Set(panItems.map(it => it.uid).filter(u => u !== undefined));
+    mixItems.forEach(m => {
+      if (m.uid !== undefined && inPan.has(m.uid)) return;
+      if (m.uid === undefined) {
+        if (m.cookedUid) return;
+        m.cookedUid = ++pipelineUid;
+        m.uid = m.cookedUid;
+      }
+      addToCooker(m.id, m.sliced, m.cracked, undefined, { transfer: true, uid: m.uid });
+      inPan.add(m.uid);
+      moved++;
+    });
+    prepTray.forEach(p => {
+      if (p.inPan || inPan.has(p.uid)) return;
+      p.inPan = true;
+      if (p.inMix) return; // already travelled through the bowl
+      addToCooker(p.id, p.sliced, p.cracked, undefined, { transfer: true, uid: p.uid });
+      inPan.add(p.uid);
+      moved++;
+    });
+    return moved;
   }
 
   function addIngredientToDish(id, sliced, cooked, cracked, landT) {
     const meta = KitchenData.getIngredient(id);
     if (id === 'boba' || (id === 'milk' && mixMode === 'blender')) {
       dish.vessel = 'cup';
-    }
-    if (id === 'dough' && cookMode === 'oven') {
-      dish.bakedCake = true;
     }
     const angle = dish.items.length * 1.35;
     const rad = dish.items.length === 0 ? 0 : Math.min(58, 22 + dish.items.length * 8);
@@ -1166,65 +1324,53 @@ const KitchenGame = (() => {
     };
     dish.items.push(item);
     if (landT !== undefined) popIns.set(item, landT);
-    recomputeDishLiquidColor();
+    refreshDishPalette();
   }
 
   /* ==========================================================================
    * Station 2: Mixing Bowl & Smoothie Blender (Orbital Whisk & Vortex)
    * ========================================================================== */
-  function addToMixer(id, sliced, cracked, landT) {
+  function addToMixer(id, sliced, cracked, landT, opts) {
     const meta = KitchenData.getIngredient(id);
+    const o = opts || {};
     const item = { id, sliced: !!sliced, cracked: !!cracked };
+    if (o.uid !== undefined) item.uid = o.uid;
     mixItems.push(item);
     if (landT !== undefined) {
       popIns.set(item, landT);
-    } else {
+    } else if (!o.transfer) {
       if (meta.liquid) sfx('pour');
       else sfx('chop');
     }
     recomputeMixColor();
-    addIngredientToDish(id, true, 0, undefined, landT);
+    if (!o.transfer) addIngredientToDish(id, sliced !== undefined ? !!sliced : !!meta.choppable, 0, cracked, landT);
     if (id === 'boba' || id === 'milk' || id === 'icecream') {
       if (mixMode === 'blender') dish.vessel = 'cup';
     }
   }
 
+  // The bowl is exactly as colourful as what is inside it.
   function recomputeMixColor() {
     if (!mixItems.length) {
       mixColor = '#FFF5DC';
       return;
     }
-    let r = 0, g = 0, b = 0;
-    mixItems.forEach(it => {
-      const c = parseInt(KitchenData.getIngredient(it.id).color.replace('#', ''), 16);
-      r += (c >> 16) & 255;
-      g += (c >> 8) & 255;
-      b += c & 255;
-    });
-    r = Math.round(r / mixItems.length);
-    g = Math.round(g / mixItems.length);
-    b = Math.round(b / mixItems.length);
-    mixColor = '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
-    dish.liquidColor = mixColor;
-  }
-
-  function recomputeDishLiquidColor() {
-    const colored = dish.items.filter(it => it.id !== 'dough' && it.id !== 'milk');
-    if (colored.length > 0) {
-      const last = KitchenData.getIngredient(colored[colored.length - 1].id);
-      dish.liquidColor = KitchenArt.lerpColor(last.color, '#FFFFFF', 0.3);
-    } else if (!dish.liquidColor) {
-      dish.liquidColor = '#F4A6B8';
-    }
+    mixColor = KitchenData.paletteFor(mixItems.map(it => it.id)).batterTint;
   }
 
   function stirMixer(amount, fromDrag) {
     if (mixItems.length === 0) {
-      if (prepTray.length > 0) {
-        prepTray.forEach(p => mixItems.push({ id: p.id, sliced: p.sliced, cracked: p.cracked }));
-      } else {
-        addToMixer('milk', false, false);
-        addToMixer('strawberry', true, false);
+      transferPrepToMixer();
+      if (mixItems.length === 0 && panItems.length) {
+        // Came back from the stove: the bowl mirrors what is already cooking.
+        panItems.forEach(p => addToMixer(p.id, p.sliced, p.cracked, undefined, { transfer: true, uid: p.uid }));
+      }
+      if (mixItems.length === 0) {
+        // Nothing was prepped: pour the critter's actual order into the bowl.
+        defaultRecipeIds().forEach(id => {
+          const m = KitchenData.getIngredient(id);
+          addToMixer(id, !!m.choppable, !!m.crackable);
+        });
       }
       recomputeMixColor();
     }
@@ -1244,7 +1390,7 @@ const KitchenGame = (() => {
     } else {
       sfx('stir');
     }
-    dish.liquidColor = mixColor;
+    refreshDishPalette();
     if (mixProgress >= 1 && !wasDone) {
       sfx('sparkle');
     }
@@ -1273,8 +1419,9 @@ const KitchenGame = (() => {
   /* ==========================================================================
    * Station 3: Sizzling Skillet Pan & Bakery Oven (Chef Pan Toss)
    * ========================================================================== */
-  function addToCooker(id, sliced, cracked, landT) {
+  function addToCooker(id, sliced, cracked, landT, opts) {
     const meta = KitchenData.getIngredient(id);
+    const o = opts || {};
     const item = {
       id,
       sliced: sliced !== undefined ? sliced : !!meta.choppable,
@@ -1282,29 +1429,29 @@ const KitchenGame = (() => {
       x: (Math.random() - 0.5) * 85,
       y: (Math.random() - 0.5) * 40,
     };
+    if (o.uid !== undefined) item.uid = o.uid;
     panItems.push(item);
     if (landT !== undefined) popIns.set(item, landT);
-    else sfx('sizzleTick', heatLevel);
-    addIngredientToDish(id, true, Math.max(0.65, cookProgress), undefined, landT);
+    else if (!o.transfer) sfx('sizzleTick', heatLevel);
+    // Direct adds at the stove are new ingredients; transfers already live on the dish.
+    if (!o.transfer) addIngredientToDish(id, item.sliced, Math.max(0.65, cookProgress), item.cracked, landT);
   }
 
   function flipPan() {
     if (panItems.length === 0) {
-      if (prepTray.length > 0) {
-        prepTray.forEach(p => addToCooker(p.id, p.sliced, p.cracked));
-      } else {
-        addToCooker('dough', false, false);
-        if (cookMode === 'oven') {
-          addToCooker('chocolate', true, false);
-        } else {
-          addToCooker('egg', false, true);
-        }
+      transferToCooker();
+      if (panItems.length === 0) {
+        // Nothing prepped or mixed at all: cook the critter's actual order.
+        // (Never a hidden chocolate or egg.)
+        defaultRecipeIds().forEach(id => {
+          const m = KitchenData.getIngredient(id);
+          addToCooker(id, !!m.choppable, !!m.crackable);
+        });
       }
     }
     const c = stationCenter(3);
     if (cookMode === 'oven') {
       cookProgress = Math.min(1.0, cookProgress + 0.35);
-      dish.bakedCake = true;
       if (!sfx('ovenDing')) sfx('sparkle');
       state.ovenPulseVel += 12;
       squashImpulse(1.06, 0.94);
@@ -1371,23 +1518,80 @@ const KitchenGame = (() => {
     dish.items.forEach(it => {
       it.cooked = Math.max(it.cooked || 0, cookProgress);
     });
-    if (cookMode === 'oven' && cookProgress > 0.35) {
+    // A cake exists only once the oven has really baked the batter.
+    if (cookMode === 'oven' && cookProgress >= 0.35) {
       dish.bakedCake = true;
     }
+    refreshDishPalette();
   }
 
   /* ==========================================================================
-   * Station 4: Piping Cream, Drizzling Sauce & Bouncy Toppings
+   * Station 4: Turntable Decorating — piping, glaze, tweezers & toppings
    * ========================================================================== */
+  // Entering the turntable never conjures a cake out of thin air: the dish is
+  // whatever the player made. Only a completely empty kitchen falls back to
+  // the critter's actual order.
   function ensureDishHasBase() {
-    dish.bakedCake = true;
-    if (!dish.cakeStyle) dish.cakeStyle = state.cakeStyle || 'candy_balls';
-    if (!dish.liquidColor) dish.liquidColor = '#542d17';
-    dish.turntableAngle = state.turntableAngle;
     if (dish.items.length === 0) {
-      addIngredientToDish('dough', false, 0.9);
-      addIngredientToDish('chocolate', true, 0.9);
+      const ids = defaultRecipeIds();
+      const doneness = cookProgress > 0 ? cookProgress : 0.9;
+      ids.forEach(id => {
+        const m = KitchenData.getIngredient(id);
+        addIngredientToDish(id, !!m.choppable, doneness, !!m.crackable);
+      });
+      if (cookMode === 'oven' && mode === 'wish' && currentOrder().wantCooking === 'oven') {
+        dish.bakedCake = true;
+      }
     }
+    dish.turntableAngle = state.turntableAngle;
+    refreshDishPalette();
+  }
+
+  // Theme the Station-4 tools after the player's ingredients (only the
+  // swatches the player has not explicitly chosen yet).
+  function prepareDecorTools() {
+    const pal = refreshDishPalette();
+    if (!pipingColorChosen) {
+      let idx;
+      if (pal.hasChocolate) {
+        // White cloud cream reads best on a dark ganache cake.
+        idx = KitchenData.PIPING_COLORS.findIndex(p => p.id === 'white');
+      } else {
+        let themeHex = null;
+        if (pal.hasRainbow) themeHex = KitchenData.RAINBOW[0];
+        else if (pal.themeId) themeHex = KitchenData.getIngredient(pal.themeId).batter;
+        idx = KitchenData.pipingIndexForColor(themeHex);
+      }
+      if (idx >= 0) pipingColorIdx = idx;
+    }
+    if (!sauceChosen) {
+      const want = pal.frostingColor || KitchenData.VANILLA_CREAM;
+      let best = 0, bestD = 1e9;
+      KitchenData.SAUCES.forEach((s, i) => {
+        const a = KitchenData.hexToRgb(s.color), b = KitchenData.hexToRgb(want);
+        const d = Math.abs(a.r - b.r) + Math.abs(a.g - b.g) + Math.abs(a.b - b.b);
+        if (d < bestD) { bestD = d; best = i; }
+      });
+      sauceIdx = best;
+    }
+    if (!toppingChosen) {
+      let idx = KitchenData.TOPPINGS.findIndex(tp => tp.ingredient && tp.ingredient === pal.themeId);
+      if (idx < 0 && (pal.hasChocolate || pal.hasRainbow)) idx = KitchenData.TOPPINGS.findIndex(tp => tp.id === 'candy_balls');
+      if (idx < 0) idx = KitchenData.TOPPINGS.findIndex(tp => tp.id === 'cherry');
+      if (idx >= 0) toppingIdx = idx;
+    }
+    if (!decorToolChosen) {
+      const hint = mode === 'wish' ? currentOrder().cakeStyle : null;
+      if (hint === 'candy_balls') {
+        decorTool = 'topping';
+        if (!toppingChosen) toppingIdx = Math.max(0, KitchenData.TOPPINGS.findIndex(tp => tp.id === 'candy_balls'));
+        state.cakeStyle = dish.cakeStyle = 'candy_balls';
+      } else {
+        decorTool = 'piping';
+        if (hint === 'rainbow_rosettes') state.cakeStyle = dish.cakeStyle = 'rainbow_rosettes';
+      }
+    }
+    renderDecorToolbar();
   }
 
   function startPipingAnim(kind, localX, localY, color) {
@@ -1401,30 +1605,118 @@ const KitchenGame = (() => {
     pa.color = color;
   }
 
-  function addPipingPoint(localX, localY, delay) {
-    ensureDishHasBase();
-    const pCol = KitchenData.PIPING_COLORS[pipingColorIdx] || KitchenData.PIPING_COLORS[0];
-    const last = dish.piping[dish.piping.length - 1];
-    if (last && Math.hypot(last.x - localX, last.y - localY) < 14) return;
-    const dollop = {
-      x: localX,
-      y: localY,
-      r: 15,
-      color: pCol.color,
-      shadow: pCol.shadow,
-      hi: pCol.hi,
-      scale: 0,
-    };
-    dish.piping.push(dollop);
-    dollopPops.push({ p: dollop, born: state.t + (delay || 0), sounded: false });
-    squashImpulse(1.06, 0.95);
-    if (!delay) startPipingAnim('piping', localX, localY, pCol.color);
-    renderPrimaryActionButton();
+  function currentPipingColor() {
+    return KitchenData.PIPING_COLORS[pipingColorIdx] || KitchenData.PIPING_COLORS[0];
   }
 
-  function addToppingAt(localX, localY, delay) {
+  // Colour of the next rosette: the player's swatch, or rainbow rows for the
+  // rainbow cake when no swatch was chosen yet.
+  function rosetteColorFor(cc) {
+    if (!pipingColorChosen && dish.hasRainbow) return rainbowRowColor(cc);
+    return currentPipingColor().color;
+  }
+
+  function pipeRosetteAt(lx, ly, isDrag, forcedColor) {
+    const last = dish.rosettes[dish.rosettes.length - 1];
+    if (isDrag && last && Math.hypot(last.x - lx, last.y - ly) < 18) return null;
+    const cc = cylinderCoords(lx, ly);
+    const col = forcedColor || rosetteColorFor(cc);
+    const ros = {
+      x: lx, y: ly, color: col,
+      shadow: KitchenArt.darken(col, 0.25), hi: KitchenArt.lighten(col, 0.25),
+      r: 15, scale: 1, angle: state.turntableAngle,
+      face: cc.face, theta: cc.theta, h: cc.h, rad: cc.rad,
+      index: dish.rosettes.length,
+    };
+    dish.rosettes.push(ros);
+    dish.rosetteCount = dish.rosettes.length;
+    if (!sfx('buttercreamSwoosh')) { if (!sfx('pipeCream')) sfx('popSelect', ros.index % 6); }
+    squashImpulse(1.04, 0.96);
+    startPipingAnim('piping', lx, ly, col);
+    return ros;
+  }
+
+  function placeCandyBallAt(lx, ly, isDrag) {
+    const last = dish.candyBalls[dish.candyBalls.length - 1];
+    if (isDrag && last && Math.hypot(last.x - lx, last.y - ly) < 16) return null;
+    const cc = cylinderCoords(lx, ly);
+    const col = rainbowRowColor(cc);
+    const ball = {
+      x: lx, y: ly, color: col, angle: state.turntableAngle,
+      face: cc.face, theta: cc.theta, h: cc.h, rad: cc.rad,
+      index: dish.candyBalls.length, scale: 1,
+    };
+    dish.candyBalls.push(ball);
+    dish.candyBallCount = dish.candyBalls.length;
+    if (!sfx('candyPop')) { if (!sfx('ballPlace')) sfx('popSelect', ball.index % 6); }
+    squashImpulse(1.03, 0.97);
+    startPipingAnim('candy', lx, ly, col);
+    return ball;
+  }
+
+  function placeToppingAt(lx, ly, toppingId, isDrag) {
+    const topMeta = KitchenData.getTopping(toppingId);
+    if (topMeta.id === 'candy_balls') return placeCandyBallAt(lx, ly, isDrag);
+    const last = dish.toppings[dish.toppings.length - 1];
+    if (isDrag && last && Math.hypot(last.x - lx, last.y - ly) < 26) return null;
+    const cc = cylinderCoords(lx, ly);
+    const ingMeta = topMeta.ingredient ? KitchenData.getIngredient(topMeta.ingredient) : null;
+    const tp = {
+      id: topMeta.id,
+      ingredient: topMeta.ingredient || null,
+      color: ingMeta ? ingMeta.color : '#F7C948',
+      x: lx, y: ly,
+      seed: Math.floor(Math.random() * 1000),
+      blownOut: false,
+      dropY: 0, sx: 1, sy: 1,
+      angle: state.turntableAngle,
+      face: cc.face, theta: cc.theta, h: cc.h, rad: cc.rad,
+      index: dish.toppings.length,
+    };
+    dish.toppings.push(tp);
+    squashImpulse(1.04, 0.96);
+    sfx('sprinkle');
+    startPipingAnim('topping', lx, ly, tp.color);
+    return tp;
+  }
+
+  // Glaze pour: the whole cake takes the poured glaze colour (progressively),
+  // and each stroke becomes glossy drips for the renderer.
+  function pourGlazeAt(lx, ly, isDrag) {
+    const sMeta = KitchenData.SAUCES[sauceIdx] || KitchenData.SAUCES[0];
+    if (!isDrag) {
+      dish.frostingColor = sMeta.color;
+      dish.frostingHi = sMeta.hi;
+      dish.glazeChosen = true;
+      dish.glazeProgress = Math.min(1, (dish.glazeProgress || 0) + 0.34);
+      const cc = cylinderCoords(lx, ly);
+      activeStroke = {
+        color: sMeta.color, hi: sMeta.hi, id: sMeta.id,
+        pts: [{ x: lx, y: ly }],
+        angle: state.turntableAngle, theta: cc.theta, face: cc.face,
+      };
+      dish.sauces.push(activeStroke);
+      sfx('pour');
+      startPipingAnim('sauce', lx, ly, sMeta.color);
+    } else if (activeStroke) {
+      const prev = activeStroke.pts[activeStroke.pts.length - 1];
+      if (!prev || Math.hypot(prev.x - lx, prev.y - ly) > 8) {
+        activeStroke.pts.push({ x: lx, y: ly });
+        dish.glazeProgress = Math.min(1, (dish.glazeProgress || 0) + 0.02);
+      }
+    }
+  }
+
+  // Legacy entry points kept for scripts: they route to the new placers.
+  function addPipingPoint(localX, localY) {
     ensureDishHasBase();
-    const topMeta = KitchenData.TOPPINGS[toppingIdx] || KitchenData.TOPPINGS[0];
+    const r = pipeRosetteAt(localX, localY, false);
+    renderPrimaryActionButton();
+    return r;
+  }
+
+  function addToppingAt(localX, localY) {
+    ensureDishHasBase();
     for (let tp of dish.toppings) {
       if (tp.id === 'candle' && !tp.blownOut && Math.hypot(tp.x - localX, tp.y - localY) < 28) {
         tp.blownOut = true;
@@ -1432,104 +1724,87 @@ const KitchenGame = (() => {
         const c = stationCenter(4);
         steamPuff(c.x + tp.x * 1.08, c.y + (tp.y - 30) * 1.08, 4, 4, false);
         starBurst(c.x + tp.x * 1.08, c.y + (tp.y - 30) * 1.08, '#F7C948', 4, 4);
-        return;
+        return null;
       }
     }
-    const tp = {
-      id: topMeta.id,
-      x: localX,
-      y: localY,
-      seed: Math.random() * 10,
-      blownOut: false,
-      dropY: 0,
-      sx: 1,
-      sy: 1,
-    };
-    dish.toppings.push(tp);
-    squashImpulse(1.05, 0.95);
-    sfx('sprinkle');
-    startPipingAnim('topping', localX, localY, '#F7C948');
+    const topMeta = KitchenData.TOPPINGS[toppingIdx] || KitchenData.TOPPINGS[0];
+    const r = placeToppingAt(localX, localY, topMeta.id, false);
     renderPrimaryActionButton();
+    return r;
   }
 
-  const RAINBOW_BALL_COLORS = ['#FF2A2A', '#FF8C1A', '#FFE619', '#1FD141', '#2986FF', '#8C2BFF'];
-  const ROSETTE_COLORS = ['#8C2BFF', '#2986FF', '#1FD141', '#FFE619', '#FF8C1A', '#FF2A2A'];
+  const RAINBOW_BALL_COLORS = KitchenData.CANDY_BALL_COLORS;
+  const ROSETTE_COLORS = KitchenData.RAINBOW;
 
   function handleDecorateAction(lx, ly, pt, isDrag) {
     ensureDishHasBase();
-    state.turntableVel += isDrag ? 0.9 : 2.2;
-    state.turntableAngle += isDrag ? 0.08 : 0.22;
+    // The white turntable eases round under the hand (gently while dragging).
+    state.turntableVel += isDrag ? 0.45 : 2.2;
+    state.turntableAngle += isDrag ? 0.03 : 0.22;
     dish.turntableAngle = state.turntableAngle;
-    dish.cakeStyle = state.cakeStyle;
 
+    let placed = null;
     if (decorTool === 'sauce') {
-      if (!isDrag) {
-        const sMeta = KitchenData.SAUCES[sauceIdx] || KitchenData.SAUCES[0];
-        activeStroke = { color: sMeta.color, hi: sMeta.hi, pts: [{ x: lx, y: ly }] };
-        dish.sauces.push(activeStroke);
-        sfx('pour');
-        startPipingAnim('sauce', lx, ly, sMeta.color);
-      } else if (activeStroke) {
-        const prev = activeStroke.pts[activeStroke.pts.length - 1];
-        if (!prev || Math.hypot(prev.x - lx, prev.y - ly) > 8) {
-          activeStroke.pts.push({ x: lx, y: ly });
-        }
-      }
-      renderPrimaryActionButton();
-      return;
-    }
-
-    if (decorTool === 'topping') {
-      if (!isDrag) {
-        addToppingAt(lx, ly);
-      }
-      return;
-    }
-
-    // decorTool === 'piping'
-    if (state.cakeStyle === 'candy_balls') {
-      dish.candyBalls = dish.candyBalls || [];
-      const last = dish.candyBalls[dish.candyBalls.length - 1];
-      if (isDrag && last && Math.hypot(last.x - lx, last.y - ly) < 18) return;
-
-      const ballIdx = dish.candyBalls.length;
-      const col = RAINBOW_BALL_COLORS[ballIdx % RAINBOW_BALL_COLORS.length];
-      const ball = { x: lx, y: ly, color: col, angle: state.turntableAngle, index: ballIdx, scale: 1 };
-      dish.candyBalls.push(ball);
-      dish.candyBallCount = dish.candyBalls.length;
-      dish.toppings.push({ id: 'candy_balls', x: lx, y: ly, color: col, dropY: 0, sx: 1, sy: 1 });
-      dish.piping.push({ x: lx, y: ly, color: col, r: 14, scale: 1 });
-
-      if (!sfx('candyPop')) { if (!sfx('ballPlace')) sfx('popSelect', ballIdx % 6); }
-      spawnParticle({
-        x: pt.x + rand(-6, 6), y: pt.y + rand(-6, 6),
-        vx: rand(-10, 10), vy: rand(-10, 10),
-        r: rand(2, 3.5), color: col, kind: 'sparkle', life: 0.3, layer: 4,
-      });
-      startPipingAnim('candy', lx, ly, col);
-      renderPrimaryActionButton();
+      pourGlazeAt(lx, ly, isDrag);
+      placed = activeStroke;
+    } else if (decorTool === 'topping') {
+      const topMeta = KitchenData.TOPPINGS[toppingIdx] || KitchenData.TOPPINGS[0];
+      placed = placeToppingAt(lx, ly, topMeta.id, isDrag);
     } else {
-      // 'rainbow_rosettes'
-      dish.rosettes = dish.rosettes || [];
-      const last = dish.rosettes[dish.rosettes.length - 1];
-      if (isDrag && last && Math.hypot(last.x - lx, last.y - ly) < 18) return;
-
-      const rosIdx = dish.rosettes.length;
-      const col = (KitchenData.PIPING_COLORS[pipingColorIdx] && KitchenData.PIPING_COLORS[pipingColorIdx].color) || ROSETTE_COLORS[rosIdx % ROSETTE_COLORS.length];
-      const ros = { x: lx, y: ly, color: col, r: 15, scale: 1 };
-      dish.rosettes.push(ros);
-      dish.rosetteCount = dish.rosettes.length;
-      dish.piping.push({ x: lx, y: ly, color: col, shadow: KitchenArt.darken(col, 0.25), hi: KitchenArt.lighten(col, 0.25), r: 15, scale: 1 });
-
-      if (!sfx('buttercreamSwoosh')) { if (!sfx('pipeCream')) sfx('popSelect', rosIdx % 6); }
+      placed = pipeRosetteAt(lx, ly, isDrag);
+    }
+    if (placed && pt) {
       spawnParticle({
         x: pt.x + rand(-6, 6), y: pt.y + rand(-6, 6),
         vx: rand(-8, 8), vy: rand(-8, 8),
-        r: rand(2, 3.5), color: col, kind: 'sparkle', life: 0.3, layer: 4,
+        r: rand(2, 3.5), color: placed.color || '#FFFDF9', kind: 'sparkle', life: 0.3, layer: 4,
       });
-      startPipingAnim('piping', lx, ly, col);
-      renderPrimaryActionButton();
     }
+    refreshDishPalette();
+    renderPrimaryActionButton();
+    return placed;
+  }
+
+  // "Next" pressed on an untouched cake: add one tasteful step of decoration
+  // in the player's own ingredient theme (never a cocoa cake out of nowhere).
+  function autoDecorateInTheme() {
+    ensureDishHasBase();
+    const G = KitchenData.CAKE_GEOM;
+    const pal = refreshDishPalette();
+    const ring = 8;
+    for (let i = 0; i < ring; i++) {
+      const a = (i / ring) * PI2 - Math.PI / 2;
+      const lx = Math.cos(a) * G.radius * 0.8;
+      const ly = G.topY + Math.sin(a) * G.topRy * 0.8;
+      const cc = cylinderCoords(lx, ly);
+      let col;
+      if (pal.hasRainbow) col = KitchenData.RAINBOW[i % KitchenData.RAINBOW.length];
+      else if (pal.hasChocolate) col = i % 2 ? KitchenData.VANILLA_CREAM : currentPipingColor().color;
+      else col = pipingColorChosen ? currentPipingColor().color : (dish.frostingColor && dish.frostingColor !== KitchenData.VANILLA_CREAM ? KitchenData.VANILLA_CREAM : KitchenData.getIngredient(pal.themeId || 'strawberry').batter);
+      pipeRosetteAt(lx, ly, false, col);
+      void cc;
+    }
+    if (pal.hasChocolate || pal.hasRainbow) {
+      // Candy-ball rows round the side wall, tweezer style
+      for (let row = 0; row < 3; row++) {
+        for (let k = 0; k < 7; k++) {
+          const u = (k - 3) / 3.2;
+          const lx = u * G.radius * 0.92;
+          const ly = G.topY + 12 + row * 20;
+          placeCandyBallAt(lx, ly, false);
+        }
+      }
+    } else {
+      const fruitTop = KitchenData.TOPPINGS.find(tp => tp.ingredient && tp.ingredient === pal.themeId);
+      const topId = fruitTop ? fruitTop.id : 'cherry';
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * PI2 + 0.4;
+        placeToppingAt(Math.cos(a) * G.radius * 0.42, G.topY + Math.sin(a) * G.topRy * 0.42, topId, false);
+      }
+    }
+    state.turntableVel += 1.4;
+    refreshDishPalette();
+    renderPrimaryActionButton();
   }
 
   function updateDecorate(dt) {
@@ -2005,6 +2280,8 @@ const KitchenGame = (() => {
     return Object.assign({}, dish, {
       bitesTaken: 0,
       piping: dish.piping.map(p => Object.assign({}, p, { scale: 1 })),
+      rosettes: dish.rosettes.map(p => Object.assign({}, p, { scale: 1 })),
+      candyBalls: dish.candyBalls.map(p => Object.assign({}, p, { scale: 1 })),
       toppings: dish.toppings.map(tp => Object.assign({}, tp, { dropY: 0, sx: 1, sy: 1 })),
     });
   }
@@ -2123,11 +2400,19 @@ const KitchenGame = (() => {
     if (drawer) drawer.style.display = station <= 3 ? 'flex' : 'none';
     if (decorBar) decorBar.style.display = station === 4 ? 'flex' : 'none';
 
-    if (station === 3 && panItems.length === 0 && prepTray.length > 0) {
-      prepTray.forEach(p => addToCooker(p.id, p.sliced, p.cracked));
+    if (station === 2) {
+      // The chopped pieces travel from the tray into the glass bowl.
+      transferPrepToMixer();
+    }
+    if (station === 3) {
+      // Batter / prepped pieces travel into the oven tin or the mini pan.
+      transferToCooker();
     }
     if (station >= 4) {
       ensureDishHasBase();
+    }
+    if (station === 4) {
+      prepareDecorTools();
     }
     if (prev !== num) startStationSlide(prev, num);
     requestAnimationFrame(resize);
@@ -2197,9 +2482,18 @@ const KitchenGame = (() => {
     cookProgress = 0;
     state.turntableAngle = 0;
     state.turntableVel = 0;
+    state.cakeStyle = null;
+    activeStroke = null;
     dish = createFreshDish();
-    dish.cakeStyle = state.cakeStyle;
     dish.turntableAngle = 0;
+    pipingColorChosen = false;
+    sauceChosen = false;
+    toppingChosen = false;
+    decorToolChosen = false;
+    pipingColorIdx = Math.max(0, KitchenData.PIPING_COLORS.findIndex(p => p.id === 'white'));
+    sauceIdx = 0;
+    toppingIdx = 0;
+    decorTool = 'piping';
     state.scoopsShown = 0;
     state.bitesEaten = 0;
     state.reaction = null;
@@ -2209,17 +2503,22 @@ const KitchenGame = (() => {
     lastReaction = null;
     if (nextOrder) {
       orderIdx = (orderIdx + 1) % KitchenData.WISH_ORDERS.length;
-      if (mode === 'wish') {
-        const ord = currentOrder();
-        const cIdx = KitchenData.CRITTERS.findIndex(c => c.id === ord.critter);
-        if (cIdx >= 0) critterIdx = cIdx;
-        cookMode = ord.wantCooking === 'oven' ? 'oven' : 'pan';
-        mixMode = ord.wantCooking === 'blender' ? 'blender' : 'bowl';
-      }
     }
+    syncModesToOrder();
     renderPrepTrayUI();
     renderCustomerBar();
+    renderDecorToolbar();
     setStation(1);
+  }
+
+  // The critter's order decides the default appliances (oven / pan / blender).
+  function syncModesToOrder() {
+    if (mode !== 'wish') return;
+    const ord = currentOrder();
+    const cIdx = KitchenData.CRITTERS.findIndex(c => c.id === ord.critter);
+    if (cIdx >= 0) critterIdx = cIdx;
+    cookMode = ord.wantCooking === 'oven' ? 'oven' : 'pan';
+    mixMode = ord.wantCooking === 'blender' ? 'blender' : 'bowl';
   }
 
   function renderPrimaryActionButton() {
@@ -2489,7 +2788,7 @@ const KitchenGame = (() => {
         const bx = x + 46 + idx * 76;
         const by = y + 82;
         const id = ord.wantIds[idx];
-        const done = id ? usedIds.has(id) : (dish.piping.length > 0 || dish.toppings.length > 0 || cookProgress >= 0.6);
+        const done = id ? usedIds.has(id) : (decorCount() > 0 || cookProgress >= 0.6);
         ctx.fillStyle = done ? '#E6F4EA' : '#FAF1E6';
         ctx.strokeStyle = done ? '#68B878' : '#DEC0A6';
         ctx.lineWidth = 2.5;
@@ -2726,10 +3025,14 @@ const KitchenGame = (() => {
     drawCanvasIconCard(c, 36, cy - 54, 118, 48, mixMode === 'bowl', 'bowl');
     drawCanvasIconCard(c, 36, cy + 8, 118, 48, mixMode === 'blender', 'blender');
 
+    const mixPal = KitchenData.paletteFor(mixItems.map(it => it.id));
     const s = {
       station: 2,
       mixMode,
       mixItems: shownItems(mixItems),
+      mixIds: mixItems.map(it => it.id),
+      layerColors: mixItems.length ? mixPal.layerColors : [],
+      hasChocolate: mixPal.hasChocolate,
       mixProgress,
       mixSwirlAngle: state.mixSwirlAngle,
       mixAngle: state.mixSwirlAngle,
@@ -2889,11 +3192,15 @@ const KitchenGame = (() => {
     const shown = panItems.filter(isLanded);
     const pt = state.panToss;
     const rest = { dx: 0, dy: 0, rot: 0, flip: 0, sx: 1, sy: 1, shadow: 1 };
+    // The tin / pan is exactly as colourful as what is really cooking in it.
+    const cookIds = panItems.length ? panItems.map(it => it.id) : (mixItems.length ? mixItems.map(it => it.id) : prepTray.map(p => p.id));
+    const cookPal = KitchenData.paletteFor(cookIds);
     const s = {
       station: 3,
       cookMode,
       heatLevel,
       panItems: shown.map(it => Object.assign({}, it, { scale: popScale(it) })),
+      panIds: panItems.map(it => it.id),
       cookProgress,
       panToss: {
         active: pt.active,
@@ -2907,7 +3214,9 @@ const KitchenGame = (() => {
         baseBody: pt.active && pt.baseBody ? pt.baseBody : rest,
       },
       ovenPulse: state.ovenPulse,
-      batterTint: dish.liquidColor || mixColor || '#FFF3C4',
+      batterTint: cookIds.length ? cookPal.batterTint : (mixItems.length ? mixColor : '#FFF3C4'),
+      layerColors: cookIds.length ? cookPal.layerColors : [],
+      hasChocolate: cookPal.hasChocolate,
       boardSpring: state.boardSpring,
     };
     callArt('drawCookStation', [c, cx, cy, s, t], () => fallbackCookStation(c, cx, cy, s));
@@ -3069,20 +3378,26 @@ const KitchenGame = (() => {
   function renderDecorateStation(c) {
     const ctr = stationCenter(4);
     const cx = ctr.x, cy = ctr.y;
-    // Left sub-tool buttons: Style A (Candy Balls) vs Style B (Rainbow Rosettes)
-    drawCanvasIconCard(c, 36, cy - 42, 118, 46, state.cakeStyle === 'candy_balls', 'cupcake');
-    drawCanvasIconCard(c, 36, cy + 14, 118, 46, state.cakeStyle === 'rainbow_rosettes', 'piping');
+    // Left sub-tool cards: A = tweezers + rainbow candy balls, B = piping bag rosettes
+    const topMetaSel = KitchenData.TOPPINGS[toppingIdx] || KitchenData.TOPPINGS[0];
+    const cardA = decorTool === 'topping' && topMetaSel.id === 'candy_balls';
+    const cardB = decorTool === 'piping';
+    drawCanvasIconCard(c, 36, cy - 42, 118, 46, cardA, 'candy_balls');
+    drawCanvasIconCard(c, 36, cy + 14, 118, 46, cardB, 'rosette');
 
     let toolColor = '#F7C948';
     if (decorTool === 'piping') {
-      if (state.cakeStyle === 'candy_balls') {
-        const idx = (dish.candyBalls && dish.candyBalls.length) || 0;
-        toolColor = RAINBOW_BALL_COLORS[idx % RAINBOW_BALL_COLORS.length];
+      if (!pipingColorChosen && dish.hasRainbow) {
+        toolColor = KitchenData.RAINBOW[dish.rosettes.length % KitchenData.RAINBOW.length];
       } else {
-        toolColor = (KitchenData.PIPING_COLORS[pipingColorIdx] || KitchenData.PIPING_COLORS[0]).color;
+        toolColor = currentPipingColor().color;
       }
     } else if (decorTool === 'sauce') {
       toolColor = (KitchenData.SAUCES[sauceIdx] || KitchenData.SAUCES[0]).color;
+    } else if (topMetaSel.id === 'candy_balls') {
+      toolColor = KitchenData.CANDY_BALL_COLORS[dish.candyBalls.length % KitchenData.CANDY_BALL_COLORS.length];
+    } else if (topMetaSel.ingredient) {
+      toolColor = KitchenData.getIngredient(topMetaSel.ingredient).color;
     }
     const pa = state.pipingAnim;
     const near = Math.hypot(hoverPt.x - cx, hoverPt.y - cy) < 165;
@@ -3090,6 +3405,8 @@ const KitchenGame = (() => {
       station: 4,
       dish,
       decorTool,
+      selectedTopping: topMetaSel.id,
+      selectedToppingIngredient: topMetaSel.ingredient || null,
       cakeStyle: state.cakeStyle,
       turntableAngle: state.turntableAngle,
       pipingAnim: {
@@ -3380,17 +3697,25 @@ const KitchenGame = (() => {
     } else if (station === 4) {
       if (pt.x >= 32 && pt.x <= 160) {
         if (pt.y >= cy - 44 && pt.y <= cy + 8) {
+          // Card A: tweezers + rainbow candy balls (video style A)
           state.cakeStyle = 'candy_balls';
           dish.cakeStyle = 'candy_balls';
-          dish.vessel = 'plate';
+          decorTool = 'topping';
+          decorToolChosen = true;
+          toppingIdx = Math.max(0, KitchenData.TOPPINGS.findIndex(tp => tp.id === 'candy_balls'));
+          toppingChosen = true;
+          renderDecorToolbar();
           squashImpulse(1.12, 0.9);
           sfx('popSelect', 1);
           return;
         }
         if (pt.y >= cy + 12 && pt.y <= cy + 64) {
+          // Card B: piping bag rosettes (video style B)
           state.cakeStyle = 'rainbow_rosettes';
           dish.cakeStyle = 'rainbow_rosettes';
-          dish.vessel = 'plate';
+          decorTool = 'piping';
+          decorToolChosen = true;
+          renderDecorToolbar();
           squashImpulse(1.12, 0.9);
           sfx('popSelect', 2);
           return;
@@ -3550,10 +3875,10 @@ const KitchenGame = (() => {
     if (!tabWrap) return;
     tabWrap.innerHTML = '';
     const sampleItems = {
-      fruit:  ['strawberry', 'banana', 'peach'],
-      meat:   ['egg', 'steak', 'cheese'],
-      veggie: ['dough', 'pizzabase', 'tomato'],
-      magic:  ['milk', 'chocolate', 'icecream'],
+      fruit:  ['strawberry', 'banana', 'kiwi'],
+      meat:   ['egg', 'beef', 'cheese'],
+      veggie: ['bun', 'pizzabase', 'tomato'],
+      magic:  ['dough', 'popcandy', 'cocoa'],
     };
     KitchenData.CATEGORIES.forEach(cat => {
       const btn = document.createElement('button');
@@ -3622,21 +3947,98 @@ const KitchenGame = (() => {
     });
   }
 
+  // Every topping swatch shows the real thing it places (fruit slices use the
+  // same ingredient art as the shelf; candy balls / arch / flower use icons).
+  function paintToppingSwatch(c, tp, x, y, r) {
+    if (tp.ingredient) {
+      KitchenArt.drawIngredient(c, tp.ingredient, x, y, r, { sliced: true, shadow: false });
+      return;
+    }
+    const iconMap = { candy_balls: 'candy_balls', rainbow_arch: 'rainbow_arch', flower_pot: 'flower_pot', stars: 'star', hearts: 'heart', candle: 'topping' };
+    if (iconMap[tp.id]) {
+      KitchenArt.drawIcon(c, iconMap[tp.id], x, y, r, 0);
+      return;
+    }
+    let drawn = false;
+    if (typeof KitchenArt.drawTopping === 'function') {
+      c.save();
+      try {
+        c.translate(x, y);
+        const k = r / 14;
+        c.scale(k, k);
+        KitchenArt.drawTopping(c, { id: tp.id, x: 0, y: 0, seed: 1, dropY: 0, sx: 1, sy: 1, blownOut: false, color: '#F7C948' }, 0, null);
+        drawn = true;
+      } catch (e) { /* fall through to simple glyphs */ }
+      c.restore();
+    }
+    if (drawn) return;
+    c.save();
+    c.strokeStyle = KitchenArt.OUTLINE;
+    c.lineWidth = 1.8;
+    if (tp.id === 'cherry') {
+      c.strokeStyle = '#5E8C3A';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(x - 4, y + 1);
+      c.quadraticCurveTo(x - 1, y - 9, x + 5, y - 11);
+      c.moveTo(x + 5, y + 2);
+      c.quadraticCurveTo(x + 4, y - 7, x + 5, y - 11);
+      c.stroke();
+      c.strokeStyle = KitchenArt.OUTLINE;
+      c.fillStyle = '#E63946';
+      KitchenArt.circ(c, x - 5, y + 4, r * 0.42);
+      c.fill();
+      c.stroke();
+      KitchenArt.circ(c, x + 5, y + 5, r * 0.42);
+      c.fill();
+      c.stroke();
+    } else if (tp.id === 'sprinkles') {
+      const cols = KitchenData.RAINBOW;
+      for (let i = 0; i < 7; i++) {
+        c.save();
+        c.translate(x + Math.cos(i * 2.3) * r * 0.55, y + Math.sin(i * 1.7) * r * 0.5);
+        c.rotate(i * 0.9);
+        c.fillStyle = cols[i % cols.length];
+        KitchenArt.rr(c, -4, -1.5, 8, 3, 1.5);
+        c.fill();
+        c.restore();
+      }
+    } else if (tp.id === 'umbrella') {
+      c.fillStyle = '#FF8DA8';
+      c.beginPath();
+      c.moveTo(x - r, y);
+      c.quadraticCurveTo(x, y - r * 1.3, x + r, y);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      c.strokeStyle = '#C87D4B';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(x, y + r * 0.9);
+      c.stroke();
+    } else {
+      KitchenArt.drawIcon(c, 'cupcake', x, y, r, 0);
+    }
+    c.restore();
+  }
+
   function renderDecorToolbar() {
     const bar = document.getElementById('decorToolbar');
     if (!bar) return;
     bar.innerHTML = '';
 
     const tools = [
-      { id: 'piping',  icon: 'cupcake' },
+      { id: 'piping',  icon: 'piping' },
       { id: 'sauce',   icon: 'sauce' },
-      { id: 'topping', icon: 'topping' },
+      { id: 'topping', icon: 'candy_balls' },
     ];
     const modeRow = document.createElement('div');
     modeRow.className = 'decor-modes';
     tools.forEach(tl => {
       const b = document.createElement('button');
       b.className = 'decor-mode-btn' + (decorTool === tl.id ? ' active' : '');
+      b.dataset.tool = tl.id;
       const cv = document.createElement('canvas');
       cv.width = 96;
       cv.height = 56;
@@ -3644,6 +4046,7 @@ const KitchenGame = (() => {
       b.appendChild(cv);
       b.onclick = () => {
         decorTool = tl.id;
+        decorToolChosen = true;
         sfx('popSelect', 2);
         renderDecorToolbar();
       };
@@ -3657,54 +4060,74 @@ const KitchenGame = (() => {
       KitchenData.PIPING_COLORS.forEach((p, idx) => {
         const b = document.createElement('button');
         b.className = 'swatch-btn' + (pipingColorIdx === idx ? ' active' : '');
+        b.dataset.swatch = p.id;
         const cv = document.createElement('canvas');
         cv.width = 68;
         cv.height = 60;
         const c = cv.getContext('2d');
         c.scale(2, 2);
-        c.fillStyle = p.color;
         c.strokeStyle = KitchenArt.OUTLINE;
         c.lineWidth = 2;
-        KitchenArt.circ(c, 17, 15, 11);
-        c.fill();
-        c.stroke();
+        let rosetteDrawn = false;
+        if (typeof KitchenArt.drawButtercreamRosette === 'function') {
+          try {
+            KitchenArt.drawButtercreamRosette(c, 17, 15, 11, p.color);
+            rosetteDrawn = true;
+          } catch (e) { rosetteDrawn = false; }
+        }
+        if (!rosetteDrawn) {
+          c.fillStyle = p.color;
+          KitchenArt.circ(c, 17, 15, 11);
+          c.fill();
+          c.stroke();
+        }
         b.appendChild(cv);
-        b.onclick = () => { pipingColorIdx = idx; sfx('popSelect', idx); renderDecorToolbar(); };
+        b.onclick = () => { pipingColorIdx = idx; pipingColorChosen = true; sfx('popSelect', idx); renderDecorToolbar(); };
         optRow.appendChild(b);
       });
     } else if (decorTool === 'sauce') {
       KitchenData.SAUCES.forEach((s, idx) => {
         const b = document.createElement('button');
         b.className = 'swatch-btn' + (sauceIdx === idx ? ' active' : '');
+        b.dataset.swatch = s.id;
         const cv = document.createElement('canvas');
         cv.width = 68;
         cv.height = 60;
         const c = cv.getContext('2d');
         c.scale(2, 2);
+        // Glossy glaze drop
         c.fillStyle = s.color;
         c.strokeStyle = KitchenArt.OUTLINE;
         c.lineWidth = 2;
-        KitchenArt.heart(c, 17, 15, 11);
+        c.beginPath();
+        c.moveTo(17, 3);
+        c.bezierCurveTo(24, 12, 28, 17, 28, 21);
+        c.bezierCurveTo(28, 27.5, 23, 31, 17, 31);
+        c.bezierCurveTo(11, 31, 6, 27.5, 6, 21);
+        c.bezierCurveTo(6, 17, 10, 12, 17, 3);
+        c.closePath();
         c.fill();
         c.stroke();
+        c.fillStyle = s.hi || 'rgba(255,255,255,0.7)';
+        KitchenArt.ell(c, 12.5, 20, 2.2, 4, -0.3);
+        c.fill();
         b.appendChild(cv);
-        b.onclick = () => { sauceIdx = idx; sfx('popSelect', idx); renderDecorToolbar(); };
+        b.onclick = () => { sauceIdx = idx; sauceChosen = true; sfx('popSelect', idx); renderDecorToolbar(); };
         optRow.appendChild(b);
       });
     } else {
       KitchenData.TOPPINGS.forEach((tp, idx) => {
         const b = document.createElement('button');
         b.className = 'swatch-btn' + (toppingIdx === idx ? ' active' : '');
+        b.dataset.swatch = tp.id;
         const cv = document.createElement('canvas');
         cv.width = 68;
         cv.height = 60;
         const c = cv.getContext('2d');
         c.scale(2, 2);
-        if (tp.id === 'candle') KitchenArt.drawIcon(c, 'topping', 17, 15, 12, 0);
-        else if (tp.id === 'stars') KitchenArt.drawIcon(c, 'star', 17, 15, 12, 0);
-        else KitchenArt.drawIcon(c, 'cupcake', 17, 15, 12, 0);
+        paintToppingSwatch(c, tp, 17, 15, 12);
         b.appendChild(cv);
-        b.onclick = () => { toppingIdx = idx; sfx('popSelect', idx); renderDecorToolbar(); };
+        b.onclick = () => { toppingIdx = idx; toppingChosen = true; sfx('popSelect', idx); renderDecorToolbar(); };
         optRow.appendChild(b);
       });
     }
@@ -3777,13 +4200,7 @@ const KitchenGame = (() => {
         setStation(4);
       } else flipPan();
     } else if (station === 4) {
-      if (dish.piping.length === 0 && dish.toppings.length === 0 && (!dish.candyBalls || dish.candyBalls.length === 0) && (!dish.rosettes || dish.rosettes.length === 0)) {
-        const pt = stationCenter(4);
-        for (let i = 0; i < 6; i++) {
-          const a = (i / 6) * PI2;
-          handleDecorateAction(Math.cos(a) * 55, Math.sin(a) * 35 - 12, { x: pt.x + Math.cos(a) * 55, y: pt.y + Math.sin(a) * 35 - 12 }, false);
-        }
-      }
+      if (decorCount() === 0) autoDecorateInTheme();
       setStation(5);
     } else if (station === 5) {
       if (dish.bitesTaken >= 3) {
@@ -3874,6 +4291,7 @@ const KitchenGame = (() => {
 
     renderHeaderIcons();
     renderStationDockIcons();
+    syncModesToOrder();
     renderCustomerBar();
     renderCategoryTabs();
     renderIngredientShelf();
@@ -3916,9 +4334,20 @@ const KitchenGame = (() => {
       mixSwirlAngle: state.mixSwirlAngle,
       panToss: { active: pt.active, t: pt.t, height: pt.height, panDy: pt.panDy, panTilt: pt.panTilt, bodies: pt.plan.length },
       turntableAngle: state.turntableAngle,
-      cakeStyle: state.cakeStyle,
+      cakeStyle: dish.cakeStyle,
       candyBalls: (dish.candyBalls || []).length,
       rosettes: (dish.rosettes || []).length,
+      piping: dish.piping.length,
+      toppings: dish.toppings.length,
+      sauces: dish.sauces.length,
+      layerColors: dish.layerColors.slice(),
+      batterTint: dish.batterTint,
+      frostingColor: dish.frostingColor,
+      hasChocolate: dish.hasChocolate,
+      hasRainbow: dish.hasRainbow,
+      bakedCake: dish.bakedCake,
+      baseKind: dish.baseKind,
+      dishIds: dishIngredientIds(),
       pipingAnim: { active: state.pipingAnim.active, t: state.pipingAnim.t, kind: state.pipingAnim.kind },
       toppingSprings: state.toppingSprings.length,
       flyingSpoon: { active: fs.active, t: fs.t, phase: fs.phase, x: fs.x, y: fs.y, angle: fs.angle, loaded: fs.loaded, endX: fs.endX, endY: fs.endY },
@@ -3938,6 +4367,57 @@ const KitchenGame = (() => {
     };
   }
 
+  // Read-only, JSON-safe snapshot of the dish + pipeline for playtests & audits.
+  function getDishState() {
+    const pick3d = o => ({
+      x: o.x, y: o.y, color: o.color || null, face: o.face || null,
+      theta: o.theta, h: o.h, rad: o.rad, angle: o.angle, index: o.index,
+    });
+    return JSON.parse(JSON.stringify({
+      station,
+      mode,
+      order: currentOrder().id,
+      critter: currentCritter().id,
+      items: dish.items.map(i => ({ id: i.id, sliced: !!i.sliced, cracked: !!i.cracked, cooked: i.cooked || 0 })),
+      ids: dishIngredientIds(),
+      layerColors: dish.layerColors,
+      batterTint: dish.batterTint,
+      frostingColor: dish.frostingColor,
+      frostingHi: dish.frostingHi,
+      hasChocolate: dish.hasChocolate,
+      hasRainbow: dish.hasRainbow,
+      themeId: dish.themeId,
+      bakedCake: dish.bakedCake,
+      cakeStyle: dish.cakeStyle,
+      baseKind: dish.baseKind,
+      vessel: dish.vessel,
+      glazeChosen: dish.glazeChosen,
+      glazeProgress: dish.glazeProgress,
+      candyBalls: dish.candyBalls.map(pick3d),
+      rosettes: dish.rosettes.map(pick3d),
+      piping: dish.piping.map(p => ({ x: p.x, y: p.y, color: p.color })),
+      toppings: dish.toppings.map(tp => Object.assign(pick3d(tp), { id: tp.id, ingredient: tp.ingredient || null, blownOut: !!tp.blownOut })),
+      sauces: dish.sauces.map(s => ({ id: s.id || null, color: s.color, hi: s.hi, points: s.pts.length })),
+      turntableAngle: dish.turntableAngle,
+      bitesTaken: dish.bitesTaken,
+      prepTray: prepTray.map(p => p.id),
+      mixItems: mixItems.map(m => m.id),
+      mixColor,
+      mixProgress,
+      mixMode,
+      panItems: panItems.map(p => p.id),
+      cookMode,
+      cookProgress,
+      heatLevel,
+      decorTool,
+      pipingColor: (KitchenData.PIPING_COLORS[pipingColorIdx] || {}).id || null,
+      pipingColorHex: (KitchenData.PIPING_COLORS[pipingColorIdx] || {}).color || null,
+      sauce: (KitchenData.SAUCES[sauceIdx] || {}).id || null,
+      topping: (KitchenData.TOPPINGS[toppingIdx] || {}).id || null,
+      chosen: { piping: pipingColorChosen, sauce: sauceChosen, topping: toppingChosen, tool: decorToolChosen },
+    }));
+  }
+
   return {
     init,
     setStation,
@@ -3950,6 +4430,40 @@ const KitchenGame = (() => {
       renderPrimaryActionButton();
       return cookMode;
     },
+    setMixMode: m => {
+      mixMode = (m === 'blender' ? 'blender' : 'bowl');
+      dish.vessel = mixMode === 'blender' ? 'cup' : 'plate';
+      renderPrimaryActionButton();
+      return mixMode;
+    },
+    setDecorTool: tl => {
+      if (tl === 'piping' || tl === 'sauce' || tl === 'topping') {
+        decorTool = tl;
+        decorToolChosen = true;
+        renderDecorToolbar();
+      }
+      return decorTool;
+    },
+    setPipingColor: idOrIdx => {
+      const idx = typeof idOrIdx === 'number' ? idOrIdx : KitchenData.PIPING_COLORS.findIndex(p => p.id === idOrIdx);
+      if (idx >= 0 && idx < KitchenData.PIPING_COLORS.length) { pipingColorIdx = idx; pipingColorChosen = true; renderDecorToolbar(); }
+      return KitchenData.PIPING_COLORS[pipingColorIdx].id;
+    },
+    setSauce: idOrIdx => {
+      const idx = typeof idOrIdx === 'number' ? idOrIdx : KitchenData.SAUCES.findIndex(s => s.id === idOrIdx);
+      if (idx >= 0 && idx < KitchenData.SAUCES.length) { sauceIdx = idx; sauceChosen = true; renderDecorToolbar(); }
+      return KitchenData.SAUCES[sauceIdx].id;
+    },
+    setTopping: idOrIdx => {
+      const idx = typeof idOrIdx === 'number' ? idOrIdx : KitchenData.TOPPINGS.findIndex(tp => tp.id === idOrIdx);
+      if (idx >= 0 && idx < KitchenData.TOPPINGS.length) { toppingIdx = idx; toppingChosen = true; renderDecorToolbar(); }
+      return KitchenData.TOPPINGS[toppingIdx].id;
+    },
+    decorateAt: (lx, ly, isDrag) => {
+      if (station !== 4) return null;
+      const c = stationCenter(4);
+      return handleDecorateAction(lx, ly, { x: c.x + lx * 1.08, y: c.y + ly * 1.08 }, !!isDrag);
+    },
     feedBite,
     feedOneBite,
     resetKitchenForNewDish,
@@ -3961,17 +4475,39 @@ const KitchenGame = (() => {
       return timeScale;
     },
     getAnimState,
+    getDishState,
+    getDish: getDishState,
     getState: () => ({
       mode,
       station,
       critter: currentCritter().id,
       order: currentOrder().id,
       prepCount: prepTray.length,
+      prepIds: prepTray.map(p => p.id),
+      mixIds: mixItems.map(m => m.id),
+      panIds: panItems.map(p => p.id),
+      mixMode,
+      cookMode,
+      mixColor,
       mixProgress,
       cookProgress,
       dishItems: dish.items.length,
+      dishIds: dishIngredientIds(),
+      layerColors: dish.layerColors.slice(),
+      batterTint: dish.batterTint,
+      frostingColor: dish.frostingColor,
+      hasChocolate: dish.hasChocolate,
+      hasRainbow: dish.hasRainbow,
+      bakedCake: dish.bakedCake,
+      baseKind: dish.baseKind,
+      cakeStyle: dish.cakeStyle,
+      decorTool,
+      candyBalls: dish.candyBalls.length,
+      rosettes: dish.rosettes.length,
       pipingCount: dish.piping.length,
       toppingsCount: dish.toppings.length,
+      saucesCount: dish.sauces.length,
+      decorCount: decorCount(),
       bitesTaken: dish.bitesTaken,
       bitesEaten: state.bitesEaten,
       reaction: state.reaction || lastReaction,

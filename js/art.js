@@ -702,7 +702,13 @@ const KitchenArt = (() => {
   /* ==========================================================================
    * 1b. HT Mini Cakes Miniature Props & Figurines (zuCz-X1TrMM)
    * ========================================================================== */
+  const RAINBOW_6 = ['#FF2A2A', '#FF8C1A', '#FFE619', '#1FD141', '#2986FF', '#8C2BFF'];
+  function safeColor(c, fallback) {
+    return (typeof c === 'string' && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(c)) ? c : (fallback || '#FF85B3');
+  }
   function drawSpecularCandyBall(ctx, x, y, r, color) {
+    color = safeColor(color, '#FF2A2A');
+    r = Math.max(0.5, r || 8);
     ctx.save();
     ctx.translate(x, y);
     // Soft contact drop shadow
@@ -735,6 +741,8 @@ const KitchenArt = (() => {
   }
 
   function drawButtercreamRosette(ctx, x, y, r, color) {
+    color = safeColor(color, '#FF85B3');
+    r = Math.max(0.5, r || 8);
     ctx.save();
     ctx.translate(x, y);
     ctx.fillStyle = 'rgba(40, 20, 10, 0.22)';
@@ -838,9 +846,9 @@ const KitchenArt = (() => {
     ctx.stroke();
     ell(ctx, 0, 0, rx * 0.66, ry * 0.66);
     ctx.stroke();
-    // Subtle rotating ticks/dots that show the rotation smoothly
+    // Subtle rotating ticks/dots that show the rotation smoothly (same sense as the cake decorations)
     for (let k = 0; k < 16; k++) {
-      const a = (k / 16) * PI2 + angle;
+      const a = (k / 16) * PI2 - angle;
       const px = Math.cos(a) * rx * 0.88, py = Math.sin(a) * ry * 0.88;
       ctx.fillStyle = 'rgba(180, 172, 160, 0.6)';
       circ(ctx, px, py, 2.2);
@@ -2413,26 +2421,33 @@ const KitchenArt = (() => {
     ctx.fill();
     const scoop = opts.scoop === undefined ? (opts.loaded ? 1 : 0) : clamp01(opts.scoop);
     if (scoop > 0.02) {
-      const isCake = opts.isCake || opts.cakeStyle || opts.ingId === 'cocoa' || opts.ingId === 'dough' || opts.ingId === 'chocolate';
+      const isCake = !!opts.isCake;
       ctx.save();
       ctx.scale(scoop, scoop);
       if (isCake) {
-        // Miniature 6-layer rainbow cake wedge slice on spoon
-        const rainbowLayers = ['#FF2A2A', '#FF8C1A', '#FFE619', '#1FD141', '#2986FF', '#8C2BFF'];
+        // Miniature wedge of THE player's cake: its real sponge layers, cream filling & frosting
+        const layers = (opts.layerColors && opts.layerColors.length) ? opts.layerColors : [VANILLA_SPONGE];
+        const bands = spongeBands(layers);
+        const frosting = safeColor(opts.frostingColor, VANILLA_CREAM);
+        const topCol = safeColor(opts.glazeColor, frosting);
+        const n = bands.length;
+        const wedgeH = r * 0.62, bandH = wedgeH / n;
         ctx.strokeStyle = OUTLINE;
         ctx.lineWidth = 1.6;
-        for (let lr = 0; lr < 6; lr++) {
-          ctx.fillStyle = rainbowLayers[lr];
-          const ly = -r * 0.36 + lr * (r * 0.105);
-          rr(ctx, -r * 0.34, ly, r * 0.68, r * 0.095, 1.5);
+        for (let i = 0; i < n; i++) {
+          ctx.fillStyle = bands[n - 1 - i];
+          const ly = -r * 0.36 + i * bandH;
+          rr(ctx, -r * 0.34, ly, r * 0.68, bandH + 0.5, 1.2);
           ctx.fill();
-          ctx.fillStyle = '#FFFDF9';
-          ctx.fillRect(-r * 0.32, ly + r * 0.082, r * 0.64, r * 0.02);
+          if (i > 0) {
+            ctx.fillStyle = VANILLA_CREAM;
+            ctx.fillRect(-r * 0.32, ly - r * 0.012, r * 0.64, r * 0.024);
+          }
         }
-        // Chocolate mirror glaze roof on top of wedge
-        ctx.fillStyle = '#2A1208';
+        // Frosting roof on top of the wedge (base frosting or poured glaze)
+        ctx.fillStyle = topCol;
         ctx.beginPath();
-        ctx.moveTo(0, -r * 0.56);
+        ctx.moveTo(0, -r * 0.54);
         ctx.lineTo(r * 0.36, -r * 0.34);
         ctx.lineTo(-r * 0.36, -r * 0.34);
         ctx.closePath();
@@ -2441,10 +2456,15 @@ const KitchenArt = (() => {
         rr(ctx, -r * 0.36, -r * 0.38, r * 0.72, r * 0.08, 2);
         ctx.fill();
         ctx.stroke();
-        // Outer outline around the 6-layer rainbow wedge
-        ctx.strokeRect(-r * 0.34, -r * 0.36, r * 0.68, r * 0.63);
-        // Mini specular candy ball on top
-        drawSpecularCandyBall(ctx, 0, -r * 0.48, r * 0.17, '#FF2A2A');
+        // Outer frosting coat on the right side
+        ctx.fillStyle = frosting;
+        rr(ctx, r * 0.3, -r * 0.34, r * 0.06, wedgeH, 1);
+        ctx.fill();
+        ctx.strokeRect(-r * 0.34, -r * 0.36, r * 0.68, wedgeH);
+        // A little of what the player put on top rides along
+        if (opts.topper && opts.topper.kind === 'ball') drawSpecularCandyBall(ctx, 0, -r * 0.48, r * 0.17, safeColor(opts.topper.color, '#FF2A2A'));
+        else if (opts.topper && opts.topper.kind === 'rosette') drawButtercreamRosette(ctx, 0, -r * 0.5, r * 0.17, safeColor(opts.topper.color, '#FF85B3'));
+        else if (opts.topper && opts.topper.kind === 'fruit') drawIngredient(ctx, opts.topper.id, 0, -r * 0.5, r * 0.2, { sliced: true, shadow: false });
       } else {
         const col = opts.color || '#F4A6B8';
         ctx.fillStyle = col;
@@ -2767,9 +2787,200 @@ const KitchenArt = (() => {
   const PORTION_ORDER = [1, 0, 2]; // bottom (nearest), right, left
   const PORTION_A0 = -PI / 2;      // sector 0 starts at the top
 
-  function portionPath(ctx, idx, R) {
+  /* ---------- Ingredient-driven cake palette (ZERO hardcoded chocolate) ----------
+   * Every sponge / batter / frosting colour is derived from the ingredient ids the
+   * player actually prepped. Dark chocolate only ever appears when 'chocolate' or
+   * 'cocoa' is genuinely in the dish (or the player picked a chocolate glaze). */
+  const CHOCO_IDS = { chocolate: true, cocoa: true };
+  const CHOCO_SPONGE = '#6B3A1E';
+  const CHOCO_GLAZE = '#3C1B0E';
+  const VANILLA_SPONGE = '#FFF0C2';
+  const VANILLA_CREAM = '#FFFDF9';
+  // Neutral bases that do not tint a sponge layer on their own
+  const NEUTRAL_IDS = { dough: true, egg: true, milk: true, honey: true, icecream: true, cheese: false, bun: true, pizzabase: true };
+  const SPONGE_COLOR = {
+    strawberry: '#FF6B8B', banana: '#FFE066', pineapple: '#FFE066', kiwi: '#70D66B',
+    blueberry: '#6BA8FF', peach: '#FFB38A', lemon: '#FFF07A', cherry: '#E8405A',
+    chocolate: CHOCO_SPONGE, cocoa: CHOCO_SPONGE, boba: '#8C6A52', popcandy: '#FF8FD8',
+    tomato: '#FF7A66', lettuce: '#9BE39B', chili: '#FF5E4D', cheese: '#FFD966',
+    beef: '#C98A6B', bacon: '#E8907A', shrimp: '#FFB49A', sausage: '#E09070',
+  };
+  function isChocoId(id) { return !!CHOCO_IDS[id]; }
+  function ingMeta(id) {
+    const m = (typeof KitchenData !== 'undefined' && KitchenData) ? KitchenData.getIngredient(id) : null;
+    return m && m.id === id ? m : null;
+  }
+  function isNeutralId(id) {
+    const m = ingMeta(id);
+    if (m && typeof m.neutral === 'boolean') return m.neutral;
+    return !!NEUTRAL_IDS[id];
+  }
+  function isRainbowId(id) { const m = ingMeta(id); return !!(m && m.rainbow); }
+  function isFruitId(id) { const m = ingMeta(id); return !!(m && m.cat === 'fruit'); }
+  function spongeColorFor(id) {
+    const m = ingMeta(id);
+    if (m && m.batter) return m.batter;
+    if (SPONGE_COLOR[id]) return SPONGE_COLOR[id];
+    return m && m.color ? lighten(m.color, 0.12) : VANILLA_SPONGE;
+  }
+  function creamColorFor(id) {
+    const m = ingMeta(id);
+    if (m && m.cream) return m.cream;
+    return lighten(spongeColorFor(id), 0.5);
+  }
+  /** Single source of truth when data.js provides it; otherwise the local deriver. */
+  function paletteForIds(ids) {
+    if (typeof KitchenData !== 'undefined' && KitchenData && typeof KitchenData.paletteFor === 'function') {
+      try {
+        const p = KitchenData.paletteFor(ids);
+        if (p && Array.isArray(p.layerColors) && p.layerColors.length) return p;
+      } catch (e) { /* fall through to the local deriver */ }
+    }
+    const hasChocolate = ids.some(isChocoId);
+    const hasRainbow = ids.some(isRainbowId);
+    const colored = ids.filter(id => !isNeutralId(id) && !isRainbowId(id));
+    const layerColors = hasRainbow ? RAINBOW_6.slice() : (colored.length ? layerColorsFromIds(colored, null) : [VANILLA_SPONGE]);
+    const batterTint = colored.length ? avgColors(colored.map(spongeColorFor)) : (hasRainbow ? '#FF8FD8' : VANILLA_SPONGE);
+    const frostingColor = hasChocolate ? CHOCO_GLAZE : (colored.length ? creamColorFor(colored[0]) : VANILLA_CREAM);
+    return { ids, colored, layerColors, batterTint, frostingColor, hasChocolate, hasRainbow };
+  }
+  function avgColors(list) {
+    if (!list || !list.length) return null;
+    let r = 0, g = 0, b = 0;
+    list.forEach(c => { const q = hexToRgb(safeColor(c, VANILLA_SPONGE)); r += q[0]; g += q[1]; b += q[2]; });
+    const n = list.length;
+    const h = v => ('0' + Math.round(v / n).toString(16)).slice(-2);
+    return '#' + h(r) + h(g) + h(b);
+  }
+  function itemIds(dish) { return (dish && dish.items ? dish.items : []).map(it => it.id); }
+  function dishHasChoco(dish) { return itemIds(dish).some(isChocoId); }
+  /** Distinct sponge colours from the ingredients actually in the dish (bottom -> top). */
+  function layerColorsFromIds(ids, tint) {
+    const cols = [];
+    ids.forEach(id => {
+      if (isNeutralId(id)) return;
+      const c = spongeColorFor(id);
+      if (cols.indexOf(c) < 0) cols.push(c);
+    });
+    if (!cols.length) cols.push(tint ? lighten(tint, 0.1) : VANILLA_SPONGE);
+    return cols;
+  }
+  function deriveLayerColors(dish) {
+    if (dish && Array.isArray(dish.layerColors) && dish.layerColors.length) return dish.layerColors.map(c => safeColor(c, VANILLA_SPONGE));
+    return paletteForIds(itemIds(dish)).layerColors;
+  }
+  function deriveBatterTint(dish) {
+    if (dish && dish.batterTint) return safeColor(dish.batterTint, VANILLA_SPONGE);
+    const ids = itemIds(dish);
+    if (ids.length) return safeColor(paletteForIds(ids).batterTint, VANILLA_SPONGE);
+    if (dish && dish.liquidColor) return safeColor(dish.liquidColor, VANILLA_SPONGE);
+    return VANILLA_SPONGE;
+  }
+  function deriveFrostingColor(dish) {
+    if (dish && dish.frostingColor) return safeColor(dish.frostingColor, VANILLA_CREAM);
+    return safeColor(paletteForIds(itemIds(dish)).frostingColor, VANILLA_CREAM);
+  }
+  function isCakeDish(dish) { return !!(dish && dish.bakedCake && dish.vessel !== 'cup'); }
+
+  /* ---------- 3D layer-cake cylinder geometry (dish-local, unscaled) ----------
+   * Shared with game.js via KitchenData.CAKE_GEOM so hit-testing and drawing agree. */
+  const CAKE = { cy: -28, R: 84, ry: 32, H: 68 };
+  function cakeGeom(dish) {
+    const G = (typeof KitchenData !== 'undefined' && KitchenData && KitchenData.CAKE_GEOM) || null;
+    const cy = G && typeof G.topY === 'number' ? G.topY : CAKE.cy;
+    const R = G && typeof G.radius === 'number' ? G.radius : CAKE.R;
+    const ry = G && typeof G.topRy === 'number' ? G.topRy : CAKE.ry;
+    const H = G && typeof G.sideHeight === 'number' ? G.sideHeight : CAKE.H;
+    return { cy, R, ry, H };
+  }
+  /** Rim point of the top ellipse at angle a. */
+  function rimPt(g, a) { return { x: Math.cos(a) * g.R, y: g.cy + Math.sin(a) * g.ry }; }
+  /** Resolve where a decoration sits on the cake surface.
+   *  Convention: screen angle a = aw - turntableAngle (front centre a = PI/2,
+   *  x = cos(a) * R, visible side when sin(a) > 0). Accepts the game's optional
+   *  precomputed cylinder coords { face, theta, h, rad } (x = R*sin(theta+angle)),
+   *  otherwise maps the dish-local tap (x, y) + the angle at placement. */
+  function cakeSurfacePoint(g, ent) {
+    if (ent && typeof ent.theta === 'number' && ent.face) {
+      if (ent.face === 'top') return { top: true, rad: clamp01(ent.rad === undefined ? 0.6 : ent.rad), h: 0, aw: PI / 2 - ent.theta };
+      return { top: false, rad: 1, h: clamp01(ent.h || 0), aw: PI / 2 - ent.theta };
+    }
+    const x = ent.x || 0, y = ent.y || 0, placed = ent.angle || 0;
+    const u = x / g.R, v = (y - g.cy) / g.ry;
+    const radTop = Math.hypot(u, v);
+    if (radTop <= 1.02 || y < g.cy) {
+      return { top: true, rad: Math.min(0.94, radTop), h: 0, aw: Math.atan2(v, u) + placed };
+    }
+    const ux = clamp(u, -0.985, 0.985);
+    const frontRimY = g.cy + Math.sqrt(1 - ux * ux) * g.ry;
+    return { top: false, rad: 1, h: clamp01((y - frontRimY) / g.H), aw: Math.acos(ux) + placed };
+  }
+  /** Screen position (dish-local) + depth scale of a surface point for the current angle. */
+  function cakeSurfaceXY(g, sp, angle) {
+    const a = sp.aw - (angle || 0);
+    if (sp.top) {
+      return { x: Math.cos(a) * sp.rad * g.R, y: g.cy + Math.sin(a) * sp.rad * g.ry, depth: 1, sin: 1, visible: true };
+    }
+    const s = Math.sin(a);
+    return {
+      x: Math.cos(a) * g.R * 0.985,
+      y: g.cy + s * g.ry + sp.h * g.H,
+      depth: 0.82 + 0.22 * clamp01(s), sin: s, visible: s > -0.06,
+    };
+  }
+  /** Full outline of the cake cylinder (top ellipse + side wall + bottom front arc). */
+  function cakeBodyPath(ctx, g) {
+    ctx.beginPath();
+    ctx.moveTo(-g.R, g.cy);
+    ctx.lineTo(-g.R, g.cy + g.H);
+    ctx.ellipse(0, g.cy + g.H, g.R, g.ry, 0, PI, 0, true);
+    ctx.lineTo(g.R, g.cy);
+    ctx.ellipse(0, g.cy, g.R, g.ry, 0, 0, PI, true);
+    ctx.closePath();
+  }
+  function cakeSidePath(ctx, g) {
+    ctx.beginPath();
+    ctx.moveTo(-g.R, g.cy);
+    ctx.lineTo(-g.R, g.cy + g.H);
+    ctx.ellipse(0, g.cy + g.H, g.R, g.ry, 0, PI, 0, true);
+    ctx.lineTo(g.R, g.cy);
+    ctx.ellipse(0, g.cy, g.R, g.ry, 0, 0, PI, false);
+    ctx.closePath();
+  }
+
+  /** Plate portion wedge (flat dishes). */
+  function platePortionPath(ctx, idx, R) {
     const a1 = PORTION_A0 + idx * (PI2 / 3);
     sector(ctx, 0, -2, R, R * 0.66, a1, a1 + PI2 / 3);
+  }
+  /** Cake-aware portion region: straight cuts from the top centre + vertical cut
+   *  faces on the side wall, extended outward so the three regions tile the plane. */
+  function cakePortionPath(ctx, idx, g) {
+    const a1 = PORTION_A0 + idx * (PI2 / 3);
+    const a2 = a1 + PI2 / 3;
+    const BIG = 420;
+    const p1 = rimPt(g, a1), p2 = rimPt(g, a2);
+    const ext = (p, a) => ({ x: p.x, y: Math.sin(a) >= -0.001 ? BIG : -BIG });
+    const e1 = ext(p1, a1), e2 = ext(p2, a2);
+    const angOf = p => Math.atan2(p.y - g.cy, p.x);
+    const corners = [{ x: BIG, y: -BIG }, { x: BIG, y: BIG }, { x: -BIG, y: BIG }, { x: -BIG, y: -BIG }];
+    let s = angOf(e1), e = angOf(e2);
+    while (e <= s) e += PI2;
+    ctx.moveTo(0, g.cy);
+    ctx.lineTo(p1.x, p1.y);
+    ctx.lineTo(e1.x, e1.y);
+    corners
+      .map(c => { let a = angOf(c); while (a <= s) a += PI2; return { c, a }; })
+      .filter(o => o.a < e)
+      .sort((p, q) => p.a - q.a)
+      .forEach(o => ctx.lineTo(o.c.x, o.c.y));
+    ctx.lineTo(e2.x, e2.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.closePath();
+  }
+  function portionPath(ctx, idx, R, dish) {
+    if (isCakeDish(dish)) cakePortionPath(ctx, idx, cakeGeom(dish));
+    else platePortionPath(ctx, idx, R);
   }
 
   /** Dish-local (unscaled) point where bite #i (0..2) is scooped from. */
@@ -2777,6 +2988,10 @@ const KitchenArt = (() => {
     if (dish && dish.vessel === 'cup') return { x: 0, y: -50 };
     const idx = PORTION_ORDER[clamp(Math.floor(i || 0), 0, 2)];
     const a = PORTION_A0 + (idx + 0.5) * (PI2 / 3);
+    if (isCakeDish(dish)) {
+      const g = cakeGeom(dish);
+      return { x: Math.cos(a) * g.R * 0.5, y: g.cy + 4 + Math.sin(a) * g.ry * 0.5 };
+    }
     return { x: Math.cos(a) * 46, y: -2 + Math.sin(a) * 46 * 0.66 };
   }
 
@@ -2932,13 +3147,21 @@ const KitchenArt = (() => {
         ctx.stroke();
       }
     } else if (tp.id === 'candy_balls') {
-      const rainbow = ['#FF2A2A', '#FF8C1A', '#FFE619', '#1FD141', '#2986FF', '#8C2BFF'];
-      const c = rainbow[(tp.seed || 0) % rainbow.length];
-      drawSpecularCandyBall(ctx, 0, 0, 10, c);
+      const seedIdx = Math.abs(Math.floor(tp.seed || 0)) % RAINBOW_6.length;
+      drawSpecularCandyBall(ctx, 0, 0, 10, safeColor(tp.color, RAINBOW_6[seedIdx]));
     } else if (tp.id === 'rainbow_arch') {
       drawRainbowArchFigurine(ctx, 0, -12, 0.75);
     } else if (tp.id === 'flower_pot') {
       drawYellowSunflowerPot(ctx, 0, -6, 0.65);
+    } else if (tp.ingredient || /_(top|slice)$/.test(tp.id || '')) {
+      // Fresh fruit slice toppings (berry_top, kiwi_slice, banana_slice, ...): real ingredient art
+      const ingId = tp.ingredient || String(tp.id).replace(/_(top|slice)$/, '');
+      const meta = KitchenData.getIngredient(ingId);
+      if (meta && meta.id === ingId) {
+        drawIngredient(ctx, meta.id, 0, 0, 14, { sliced: ingId !== 'blueberry', shadow: false, rot: (tp.seed || 0) * 0.3 });
+      } else {
+        drawIngredient(ctx, 'strawberry', 0, 0, 14, { sliced: true, shadow: false });
+      }
     } else if (tp.id === 'cherry') {
       ctx.strokeStyle = '#4E8C58';
       ctx.lineWidth = 2.4;
@@ -3011,138 +3234,247 @@ const KitchenArt = (() => {
     ctx.stroke();
   }
 
+  /* ---------- Freshly baked layer cake: 100% ingredient-driven ---------- */
+  /** Sponge bands for the side wall / cut faces: bottom -> top. */
+  function spongeBands(layerColors) {
+    const n = layerColors.length;
+    if (n >= 3) return layerColors.slice(0, 6);
+    if (n === 2) return [layerColors[0], layerColors[1], layerColors[0], layerColors[1]];
+    return [layerColors[0], layerColors[0], layerColors[0]];
+  }
+  /** Glaze state derived from what the player actually poured in Station 4. */
+  function cakeGlaze(dish) {
+    const sauces = (dish.sauces || []).filter(st => st && st.pts && st.pts.length);
+    const explicit = typeof dish.glazeProgress === 'number' ? clamp01(dish.glazeProgress) : null;
+    const coverage = explicit !== null ? explicit : clamp01(sauces.length * 0.34);
+    const last = sauces.length ? sauces[sauces.length - 1] : null;
+    const color = last ? safeColor(last.color, deriveFrostingColor(dish)) : null;
+    return { sauces, coverage, color };
+  }
+  function drawLayerCakeBody(ctx, dish, t, angle) {
+    const g = cakeGeom(dish);
+    const layers = deriveLayerColors(dish);
+    const bands = spongeBands(layers);
+    const frosting = safeColor(deriveFrostingColor(dish), VANILLA_CREAM);
+    const glaze = cakeGlaze(dish);
+    const topCol = glaze.color && glaze.coverage > 0 ? lerpColor(frosting, glaze.color, clamp01(glaze.coverage * 1.6)) : frosting;
+    const bottomY = g.cy + g.H;
+
+    // Contact shadow on the turntable
+    softShadow(ctx, 0, bottomY + g.ry * 0.55, g.R * 1.08, g.ry * 0.95, 0.2);
+
+    // Side wall: sponge bands with cream filling between them (real ingredient colours)
+    ctx.save();
+    cakeSidePath(ctx, g);
+    ctx.clip();
+    const bandH = g.H / bands.length;
+    for (let i = 0; i < bands.length; i++) {
+      const col = bands[bands.length - 1 - i];      // top band first
+      const y0 = g.cy + i * bandH;
+      const sg = ctx.createLinearGradient(-g.R, 0, g.R, 0);
+      sg.addColorStop(0, darken(col, 0.22));
+      sg.addColorStop(0.3, lighten(col, 0.08));
+      sg.addColorStop(0.62, col);
+      sg.addColorStop(1, darken(col, 0.3));
+      ctx.fillStyle = sg;
+      ctx.beginPath();
+      ctx.moveTo(-g.R - 2, y0 - 2);
+      ctx.lineTo(g.R + 2, y0 - 2);
+      ctx.lineTo(g.R + 2, y0 + bandH + g.ry + 2);
+      ctx.lineTo(-g.R - 2, y0 + bandH + g.ry + 2);
+      ctx.closePath();
+      ctx.fill();
+      // Cream filling seam following the ellipse curvature
+      if (i > 0) {
+        ctx.strokeStyle = rgba(VANILLA_CREAM, 0.92);
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.ellipse(0, y0, g.R, g.ry, 0, 0.04, PI - 0.04);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(92,61,46,0.16)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.ellipse(0, y0 + 2.2, g.R, g.ry, 0, 0.1, PI - 0.1);
+        ctx.stroke();
+      }
+    }
+    // Soft crumb texture on the sponge
+    ctx.fillStyle = 'rgba(255,255,255,0.16)';
+    for (let k = 0; k < 26; k++) {
+      const px = (hash(k + 11) - 0.5) * g.R * 1.9;
+      const py = g.cy + 6 + hash(k + 23) * (g.H + g.ry - 10);
+      circ(ctx, px, py, 1.2 + hash(k + 5) * 1.6);
+      ctx.fill();
+    }
+    // Thin naked-cake crumb coat of the base frosting (sponge colours stay visible)
+    const coatA = 0.26 + 0.6 * glaze.coverage;
+    const cg = ctx.createLinearGradient(-g.R, 0, g.R, 0);
+    cg.addColorStop(0, rgba(darken(frosting, 0.18), coatA));
+    cg.addColorStop(0.35, rgba(lighten(frosting, 0.1), coatA * 0.85));
+    cg.addColorStop(1, rgba(darken(frosting, 0.26), coatA));
+    ctx.fillStyle = cg;
+    ctx.fillRect(-g.R - 2, g.cy - 2, g.R * 2 + 4, g.H + g.ry + 6);
+    ctx.restore();
+
+    // Side wall outline
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 3;
+    cakeSidePath(ctx, g);
+    ctx.stroke();
+
+    // Smooth frosted top surface (base frosting -> poured glaze colour)
+    const tg = ctx.createRadialGradient(-g.R * 0.3, g.cy - g.ry * 0.35, 4, 0, g.cy, g.R);
+    tg.addColorStop(0, lighten(topCol, 0.3));
+    tg.addColorStop(0.7, topCol);
+    tg.addColorStop(1, darken(topCol, 0.14));
+    ctx.fillStyle = tg;
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 3;
+    ell(ctx, 0, g.cy, g.R, g.ry);
+    ctx.fill();
+    ctx.stroke();
+    // Spread-spatula swirl on the frosting
+    ctx.strokeStyle = rgba(darken(topCol, 0.25), 0.22);
+    ctx.lineWidth = 1.6;
+    for (let k = 1; k <= 3; k++) {
+      ctx.beginPath();
+      ctx.ellipse(0, g.cy, g.R * (0.22 * k), g.ry * (0.22 * k), 0, 0.3 - angle * 0.5, PI * 1.5 - angle * 0.5);
+      ctx.stroke();
+    }
+    // Glossy highlight
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.ellipse(0, g.cy, g.R * 0.82, g.ry * 0.74, 0, PI * 1.12, PI * 1.55);
+    ctx.stroke();
+
+    // Poured glaze: glossy drips exactly where the player poured (rotate with the turntable)
+    if (glaze.sauces.length && glaze.coverage > 0) {
+      let dripN = 0;
+      const dripCol = glaze.color;
+      glaze.sauces.forEach((st, si) => {
+        st.pts.forEach((p, pi) => {
+          if (pi % 2 || dripN > 42) return;
+          const sp = cakeSurfacePoint(g, { x: p.x, y: p.y, angle: st.angle || 0 });
+          const a = sp.aw - angle;
+          const sn = Math.sin(a);
+          if (sn < -0.02) return;
+          const x = Math.cos(a) * g.R * 0.97;
+          const y = g.cy + sn * g.ry;
+          const len = 10 + hash(si * 7 + pi) * 24 + glaze.coverage * 10;
+          const w = 6 + hash(pi + 3) * 5;
+          ctx.fillStyle = dripCol;
+          ctx.strokeStyle = OUTLINE;
+          ctx.lineWidth = 1.6;
+          rr(ctx, x - w / 2, y - 2, w, len, w / 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = 'rgba(255,255,255,0.4)';
+          rr(ctx, x - w / 2 + 1.5, y + 1, w * 0.3, len * 0.55, 1.5);
+          ctx.fill();
+          dripN++;
+        });
+      });
+      // Thick glaze lip around the top edge
+      ctx.strokeStyle = dripCol;
+      ctx.lineWidth = 5 + glaze.coverage * 4;
+      ctx.beginPath();
+      ctx.ellipse(0, g.cy + 1, g.R, g.ry, 0, 0.02, PI - 0.02);
+      ctx.stroke();
+    }
+    return g;
+  }
+
+  /** Items decorating the cake: fruit slices from the batter ingredients arranged on
+   *  top, rotating with the turntable. Nothing is invented; neutral bases draw nothing. */
+  function drawCakeTopFruit(ctx, dish, g, angle, t) {
+    const ids = [];
+    (dish.items || []).forEach(it => {
+      if (isNeutralId(it.id) || ids.indexOf(it.id) >= 0) return;
+      ids.push(it.id);
+    });
+    if (!ids.length) return;
+    const total = Math.min(8, Math.max(ids.length, ids.length * (ids.length === 1 ? 6 : 3)));
+    const placed = [];
+    for (let i = 0; i < total; i++) {
+      const id = ids[i % ids.length];
+      const a = (i / total) * PI2 - angle + 0.4;
+      const rad = 0.66;
+      const x = Math.cos(a) * rad * g.R;
+      const y = g.cy + Math.sin(a) * rad * g.ry;
+      placed.push({ id, x, y, a, i });
+    }
+    placed.sort((p, q) => p.y - q.y);
+    placed.forEach(p => {
+      const choco = isChocoId(p.id);
+      const sz = choco ? 9 : 13;
+      drawIngredient(ctx, p.id, p.x, p.y - 4, sz, {
+        sliced: !choco && p.id !== 'blueberry' && p.id !== 'popcandy', shadow: false,
+        rot: (p.i % 2 ? 0.35 : -0.25) + Math.sin(p.a) * 0.15, scaleY: 0.85,
+      });
+    });
+  }
+
+  /** Every decoration the player actually placed, mapped onto the 3D cylinder and
+   *  depth-sorted (balls via tweezers, rosettes via piping bag, toppers, dollops). */
+  function drawCakeDecorations(ctx, dish, g, angle, t, opts) {
+    const placing = opts && opts.placing;
+    const balls = dish.candyBalls || [];
+    const roses = dish.rosettes || [];
+    const taken = {};
+    const key = e => `${(e.x || 0).toFixed(1)},${(e.y || 0).toFixed(1)}`;
+    const list = [];
+    balls.forEach((b, i) => {
+      taken[key(b)] = 1;
+      const sp = cakeSurfacePoint(g, b);
+      const pos = cakeSurfaceXY(g, sp, angle);
+      if (!pos.visible) return;
+      let sc = (b.scale === undefined ? 1 : clamp01(b.scale)) * pos.depth;
+      if (placing && placing.kind === 'candy' && i === balls.length - 1) sc *= easeOutBack(seg(placing.t, 0.35, 0.85));
+      if (sc <= 0.02) return;
+      list.push({ y: pos.y + (sp.top ? 0 : 6), draw: () => drawSpecularCandyBall(ctx, pos.x, pos.y, 8.6 * sc, safeColor(b.color, RAINBOW_6[i % 6])) });
+    });
+    roses.forEach((r, i) => {
+      taken[key(r)] = 1;
+      const sp = cakeSurfacePoint(g, r);
+      const pos = cakeSurfaceXY(g, sp, angle);
+      if (!pos.visible) return;
+      let sc = (r.scale === undefined ? 1 : clamp01(r.scale)) * pos.depth;
+      if (placing && placing.kind === 'piping' && i === roses.length - 1) sc *= easeOutBack(seg(placing.t, 0.25, 0.8));
+      if (sc <= 0.02) return;
+      list.push({ y: pos.y + (sp.top ? 0 : 6), draw: () => drawButtercreamRosette(ctx, pos.x, pos.y, (r.r || 9) * 0.82 * sc, safeColor(r.color, '#FF85B3')) });
+    });
+    (dish.piping || []).forEach(p => {
+      if (taken[key(p)]) return;
+      const sp = cakeSurfacePoint(g, p);
+      const pos = cakeSurfaceXY(g, sp, angle);
+      if (!pos.visible) return;
+      const sc = (p.scale === undefined ? 1 : clamp01(p.scale)) * pos.depth;
+      if (sc <= 0.02) return;
+      list.push({ y: pos.y + (sp.top ? 0 : 6), draw: () => drawPipingDot(ctx, Object.assign({}, p, { x: pos.x, y: pos.y, r: (p.r || 12) * 0.75, scale: sc }), t) });
+    });
+    const springs = (opts && opts.toppingSprings) || dish.toppingSprings || null;
+    (dish.toppings || []).forEach((tp, i) => {
+      if (taken[key(tp)]) return;
+      // Toppers always sit on the top face (they cannot cling to the side wall)
+      const sp = cakeSurfacePoint(g, tp);
+      if (!sp.top) { sp.top = true; sp.rad = 0.86; }
+      const pos = cakeSurfaceXY(g, sp, angle);
+      list.push({ y: pos.y, draw: () => drawTopping(ctx, Object.assign({}, tp, { x: pos.x, y: pos.y }), t, springs ? springs[i] : null) });
+    });
+    list.sort((p, q) => p.y - q.y);
+    list.forEach(e => e.draw());
+  }
+
   function drawDishBase(ctx, dish, t) {
     const hasBurger = dish.items.some(it => it.id === 'bun');
     const hasPizza = dish.items.some(it => it.id === 'pizzabase');
     const hasPancake = dish.items.some(it => it.id === 'dough') && !dish.bakedCake;
     const cooked = Math.max(0, ...dish.items.map(it => it.cooked || 0));
 
-    const isRosetteCake = dish.cakeStyle === 'rainbow_rosettes' || dish.recipeId === 'ht_rainbow_rosette_cake';
-    const isCandyBallCake = dish.cakeStyle === 'candy_balls' || dish.recipeId === 'ht_rainbow_candy_cake' || dish.bakedCake;
-
-    if (isRosetteCake) {
-      // Style B (yt_hq2.jpg): Two-Tier Rainbow Rosette Cake on Turntable
-      const rotAngle = dish.turntableAngle !== undefined ? dish.turntableAngle : t * 0.35;
-      const bRad = 82, bHeight = 48, bY = -6;
-      ctx.fillStyle = '#FFF5EA';
-      ctx.strokeStyle = OUTLINE;
-      ctx.lineWidth = 3;
-      rr(ctx, -bRad, bY, bRad * 2, bHeight, 16);
-      ctx.fill();
-      ctx.stroke();
-      ell(ctx, 0, bY, bRad, 28);
-      ctx.fill();
-      ctx.stroke();
-      // 6 horizontal rows of buttercream rosettes on bottom tier
-      const rainbow = ['#8C2BFF', '#2986FF', '#1FD141', '#FFE619', '#FF8C1A', '#FF2A2A'];
-      for (let row = 0; row < 6; row++) {
-        const ry = bY + bHeight - 4 - row * 8;
-        const col = rainbow[row];
-        const numRos = 10;
-        for (let b = 0; b < numRos; b++) {
-          const a = (b / numRos) * PI2 + rotAngle;
-          if (Math.sin(a) > -0.2) {
-            const rx0 = Math.cos(a) * (bRad - 2);
-            const ry0 = ry + Math.sin(a) * 6;
-            drawButtercreamRosette(ctx, rx0, ry0, 7.5, col);
-          }
-        }
-      }
-      // Top tier: smaller cylinder radius 52, height 40 (y: -46 to -6)
-      const tRad = 52, tHeight = 40, tY = -46;
-      ctx.save();
-      rr(ctx, -tRad, tY, tRad * 2, tHeight, 10);
-      ctx.clip();
-      for (let row = 0; row < 6; row++) {
-        const sy = tY + tHeight - (row + 1) * (tHeight / 6);
-        ctx.fillStyle = rainbow[row];
-        ctx.fillRect(-tRad - 5, sy, tRad * 2 + 10, tHeight / 6 + 1);
-      }
-      ctx.restore();
-      ctx.strokeStyle = OUTLINE;
-      ctx.lineWidth = 2.5;
-      rr(ctx, -tRad, tY, tRad * 2, tHeight, 10);
-      ctx.stroke();
-      // Top surface of top tier: red buttercream
-      ctx.fillStyle = '#FF2A2A';
-      ell(ctx, 0, tY, tRad, 18);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-      ell(ctx, -tRad * 0.3, tY - 3, tRad * 0.3, 7, -0.3);
-      ctx.fill();
-    } else if (isCandyBallCake) {
-      // Style A (yt_maxresdefault.jpg): Magical Rainbow Candy Ball Cake on Turntable
-      const rotAngle = dish.turntableAngle !== undefined ? dish.turntableAngle : t * 0.35;
-      const cRad = 84, cHeight = 68, cY = -28;
-      // Dark chocolate mirror glaze cylinder
-      const chocGrad = ctx.createLinearGradient(-cRad, 0, cRad, 0);
-      chocGrad.addColorStop(0, '#220D05');
-      chocGrad.addColorStop(0.35, '#3C1B0E');
-      chocGrad.addColorStop(0.7, '#4A2312');
-      chocGrad.addColorStop(1, '#220D05');
-      ctx.fillStyle = chocGrad;
-      ctx.strokeStyle = OUTLINE;
-      ctx.lineWidth = 3.2;
-      rr(ctx, -cRad, cY, cRad * 2, cHeight, 18);
-      ctx.fill();
-      ctx.stroke();
-      // Top mirror glaze surface
-      ctx.fillStyle = '#36180C';
-      ell(ctx, 0, cY, cRad, 32);
-      ctx.fill();
-      ctx.stroke();
-      // Chocolate ganache drip fringes
-      ctx.fillStyle = '#220D05';
-      for (let k = 0; k < 8; k++) {
-        const dx = -cRad + 14 + k * 20;
-        const dlen = 8 + hash(k + 3) * 12;
-        rr(ctx, dx - 4, cY + 4, 8, dlen, 4);
-        ctx.fill();
-      }
-      // Glossy mirror reflection curve
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.ellipse(0, cY - 2, cRad * 0.8, 22, 0, PI * 1.1, PI * 1.6);
-      ctx.stroke();
-
-      // 6 horizontal rows of 3D specular Rainbow Candy Balls around the cylinder
-      const rainbow = ['#8C2BFF', '#2986FF', '#1FD141', '#FFE619', '#FF8C1A', '#FF2A2A'];
-      for (let row = 0; row < 6; row++) {
-        const ry = cY + cHeight - 6 - row * 11;
-        const col = rainbow[row];
-        const numBalls = 10;
-        for (let b = 0; b < numBalls; b++) {
-          const a = (b / numBalls) * PI2 + rotAngle;
-          if (Math.sin(a) > -0.15) {
-            const bx = Math.cos(a) * (cRad - 1);
-            const by = ry + Math.sin(a) * 7;
-            const rSize = 8.5 * (0.85 + 0.25 * Math.sin(a));
-            drawSpecularCandyBall(ctx, bx, by, rSize, col);
-          }
-        }
-      }
-
-      // Top surface concentric rings of rainbow candy balls (yt_maxresdefault.jpg)
-      const topRings = [
-        { r: cRad * 0.72, count: 8, col: '#FF2A2A' },
-        { r: cRad * 0.52, count: 6, col: '#FF8C1A' },
-        { r: cRad * 0.34, count: 5, col: '#FFE619' },
-        { r: cRad * 0.18, count: 3, col: '#1FD141' },
-      ];
-      topRings.forEach(rg => {
-        for (let i = 0; i < rg.count; i++) {
-          const a = (i / rg.count) * PI2 + rotAngle;
-          const px = Math.cos(a) * rg.r;
-          const py = cY + Math.sin(a) * (rg.r * 0.38);
-          drawSpecularCandyBall(ctx, px, py, 7.5, rg.col);
-        }
-      });
-      // Center candy ball
-      drawSpecularCandyBall(ctx, 0, cY, 8.5, '#8C2BFF');
-      // Rainbow arch topper standing in center top
-      drawRainbowArchFigurine(ctx, 0, cY - 14, 0.7);
+    if (isCakeDish(dish)) {
+      const angle = dish.turntableAngle || 0;
+      drawLayerCakeBody(ctx, dish, t, angle);
     } else if (hasPancake) {
       for (let layer = 0; layer < 3; layer++) {
         const ly = 16 - layer * 15;
@@ -3258,10 +3590,38 @@ const KitchenArt = (() => {
 
   function drawDishContent(ctx, dish, t, opts) {
     drawDishBase(ctx, dish, t);
-    const isCake = dish.bakedCake || dish.cakeStyle === 'candy_balls' || dish.cakeStyle === 'rainbow_rosettes' || dish.recipeId === 'ht_rainbow_candy_cake' || dish.recipeId === 'ht_rainbow_rosette_cake';
+    const cake = isCakeDish(dish);
+
+    if (cake) {
+      // Baked layer cake: real fruit from the batter on top + only the decorations the
+      // player actually placed (candy balls, rosettes, dollops, toppers). No pre-population.
+      const g = cakeGeom(dish);
+      const angle = dish.turntableAngle || 0;
+      drawCakeTopFruit(ctx, dish, g, angle, t);
+      drawCakeDecorations(ctx, dish, g, angle, t, opts);
+      return;
+    }
+
+    // Flat plate: pan-cooked fruit melts into a glossy jam puddle in its own colour
+    const jamIds = [];
+    dish.items.forEach(it => {
+      if ((it.cooked || 0) > 0.45 && !isNeutralId(it.id) && it.id !== 'bun' && it.id !== 'pizzabase' && jamIds.indexOf(it.id) < 0) jamIds.push(it.id);
+    });
+    if (jamIds.length && !dish.items.some(it => it.id === 'bun' || it.id === 'pizzabase' || it.id === 'dough')) {
+      const jam = avgColors(jamIds.map(spongeColorFor));
+      ctx.fillStyle = rgba(jam, 0.8);
+      ctx.strokeStyle = OUTLINE;
+      ctx.lineWidth = 2;
+      blob(ctx, 0, 6, 70, 40, 3.3, 0.14, 16);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      ell(ctx, -22, -6, 16, 6, -0.3);
+      ctx.fill();
+    }
+
     dish.items.forEach(it => {
       if (it.id === 'dough' || it.id === 'pizzabase') return;
-      if (isCake) return;
       drawIngredient(ctx, it.id, it.x || 0, it.y || 0, it.r || 32, {
         sliced: it.sliced,
         cooked: it.cooked,
@@ -3273,10 +3633,11 @@ const KitchenArt = (() => {
 
     (dish.sauces || []).forEach(stroke => {
       if (!stroke.pts || stroke.pts.length < 2) return;
+      const scol = safeColor(stroke.color, '#FF2B5E');
       ctx.save();
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      ctx.strokeStyle = rgba(stroke.color, 0.35) || stroke.color;
+      ctx.strokeStyle = rgba(scol, 0.35) || scol;
       ctx.lineWidth = 14;
       ctx.beginPath();
       stroke.pts.forEach((p, idx) => {
@@ -3284,7 +3645,7 @@ const KitchenArt = (() => {
         else ctx.lineTo(p.x, p.y + 3);
       });
       ctx.stroke();
-      ctx.strokeStyle = stroke.color;
+      ctx.strokeStyle = scol;
       ctx.lineWidth = 12;
       ctx.beginPath();
       stroke.pts.forEach((p, idx) => {
@@ -3303,23 +3664,29 @@ const KitchenArt = (() => {
       ctx.restore();
     });
 
+    (dish.candyBalls || []).forEach((b, i) => drawSpecularCandyBall(ctx, b.x || 0, b.y || 0, 9 * (b.scale === undefined ? 1 : clamp01(b.scale)), safeColor(b.color, RAINBOW_6[i % 6])));
+    (dish.rosettes || []).forEach(r => drawButtercreamRosette(ctx, r.x || 0, r.y || 0, (r.r || 12) * (r.scale === undefined ? 1 : clamp01(r.scale)), safeColor(r.color, '#FF85B3')));
     (dish.piping || []).forEach(p => drawPipingDot(ctx, p, t));
 
     const springs = (opts && opts.toppingSprings) || dish.toppingSprings || null;
     (dish.toppings || []).forEach((tp, i) => drawTopping(ctx, tp, t, springs ? springs[i] : null));
   }
 
-  function drawCrumbs(ctx, idx, seed) {
+  function drawCrumbs(ctx, idx, seed, dish) {
     const a1 = PORTION_A0 + idx * (PI2 / 3);
-    ctx.fillStyle = 'rgba(214, 150, 80, 0.75)';
+    const cake = isCakeDish(dish);
+    const crumbCol = cake ? rgba(darken(deriveLayerColors(dish)[0], 0.1), 0.8) : 'rgba(214, 150, 80, 0.75)';
+    const cyOff = cake ? cakeGeom(dish).cy + cakeGeom(dish).H * 0.9 : -2;
+    const ryK = cake ? 0.5 : 0.66;
+    ctx.fillStyle = crumbCol;
     for (let k = 0; k < 6; k++) {
       const a = a1 + 0.3 + hash(k + seed) * (PI2 / 3 - 0.6);
-      const rad = 22 + hash(k + seed + 9) * 50;
-      blob(ctx, Math.cos(a) * rad, -2 + Math.sin(a) * rad * 0.66, 2.6, 2, k + seed, 0.3, 7);
+      const rad = (cake ? 40 : 22) + hash(k + seed + 9) * 50;
+      blob(ctx, Math.cos(a) * rad, cyOff + Math.sin(a) * rad * ryK, 2.6, 2, k + seed, 0.3, 7);
       ctx.fill();
     }
-    ctx.fillStyle = 'rgba(232, 150, 130, 0.22)';
-    ell(ctx, Math.cos(a1 + PI / 3) * 36, -2 + Math.sin(a1 + PI / 3) * 24, 22, 10, a1 + PI / 3);
+    ctx.fillStyle = cake ? rgba(deriveFrostingColor(dish), 0.3) : 'rgba(232, 150, 130, 0.22)';
+    ell(ctx, Math.cos(a1 + PI / 3) * 36, cyOff + Math.sin(a1 + PI / 3) * 24, 22, 10, a1 + PI / 3);
     ctx.fill();
   }
 
@@ -3482,9 +3849,9 @@ const KitchenArt = (() => {
     }
 
     // ---------- Plate / Turntable with 3 portions ----------
-    const isHTCake = dish.bakedCake || dish.cakeStyle || dish.recipeId === 'ht_rainbow_candy_cake' || dish.recipeId === 'ht_rainbow_rosette_cake';
-    const rotAngle = dish.turntableAngle !== undefined ? dish.turntableAngle : t * 0.35;
-    if (isHTCake) {
+    const cake = isCakeDish(dish);
+    const rotAngle = dish.turntableAngle !== undefined ? dish.turntableAngle : 0;
+    if (cake) {
       drawWhiteCakeTurntable(ctx, 0, 16, 138, 76, rotAngle, t);
     } else {
       drawPlate(ctx);
@@ -3493,14 +3860,15 @@ const KitchenArt = (() => {
     const removed = PORTION_ORDER.slice(0, bites);
     const remaining = [0, 1, 2].filter(i => removed.indexOf(i) < 0);
     const scooping = scoopP > 0 && bites < 3 ? PORTION_ORDER[bites] : -1;
-    const hasContent = dish.items.length > 0 || dish.bakedCake || (dish.piping && dish.piping.length) || (dish.toppings && dish.toppings.length);
+    const hasContent = dish.items.length > 0 || cake || (dish.piping && dish.piping.length) || (dish.toppings && dish.toppings.length)
+      || (dish.candyBalls && dish.candyBalls.length) || (dish.rosettes && dish.rosettes.length);
 
     // Crumbs where portions were scooped (and under the one being lifted)
-    removed.forEach((idx, i) => drawCrumbs(ctx, idx, i * 3));
+    removed.forEach((idx, i) => drawCrumbs(ctx, idx, i * 3, dish));
     if (scooping >= 0 && scoopP > 0.35) {
       ctx.save();
       ctx.globalAlpha *= seg(scoopP, 0.35, 0.8);
-      drawCrumbs(ctx, scooping, bites * 3);
+      drawCrumbs(ctx, scooping, bites * 3, dish);
       ctx.restore();
     }
 
@@ -3512,7 +3880,7 @@ const KitchenArt = (() => {
         ctx.save();
         ctx.beginPath();
         remaining.forEach(idx => {
-          if (idx !== scooping) portionPath(ctx, idx, 150);
+          if (idx !== scooping) portionPath(ctx, idx, 150, dish);
         });
         ctx.clip();
         drawDishContent(ctx, dish, t, opts);
@@ -3527,48 +3895,71 @@ const KitchenArt = (() => {
           const sc = 1 - lift * 0.25;
           ctx.scale(sc, sc);
           ctx.beginPath();
-          portionPath(ctx, scooping, 150);
+          portionPath(ctx, scooping, 150, dish);
           ctx.clip();
           drawDishContent(ctx, dish, t, opts);
           ctx.restore();
         }
 
-        // Cut faces on remaining portion boundaries (revealing 6-layer rainbow interior for HT cakes!)
+        // Cut faces on remaining portion boundaries
         ctx.save();
-        if (isHTCake) {
-          const rainbowLayers = ['#8C2BFF', '#2986FF', '#1FD141', '#FFE619', '#FF8C1A', '#FF2A2A'];
+        if (cake) {
+          // Interior cross-section: the REAL sponge layers + cream filling + the real frosting
+          const g = cakeGeom(dish);
+          const bands = spongeBands(deriveLayerColors(dish));
+          const frosting = safeColor(deriveFrostingColor(dish), VANILLA_CREAM);
+          const glaze = cakeGlaze(dish);
+          const topCol = glaze.color && glaze.coverage > 0 ? lerpColor(frosting, glaze.color, clamp01(glaze.coverage * 1.6)) : frosting;
           remaining.forEach(idx => {
             if (idx === scooping) return;
             [idx, (idx + 1) % 3].forEach((edge, e) => {
               const neighbour = e === 0 ? (idx + 2) % 3 : (idx + 1) % 3;
               if (remaining.indexOf(neighbour) >= 0 && neighbour !== scooping) return;
               const a = PORTION_A0 + edge * (PI2 / 3);
-              const x0 = Math.cos(a) * 4, y0 = -2 + Math.sin(a) * 2;
-              const x1 = Math.cos(a) * 76, y1 = -2 + Math.sin(a) * 46;
-              // 6 rainbow sponge layer bands
-              for (let lr = 0; lr < 6; lr++) {
-                const col = rainbowLayers[lr];
-                const dy = -16 + lr * 6.5;
-                ctx.strokeStyle = col;
-                ctx.lineWidth = 4.5;
+              const p = rimPt(g, a);
+              if (Math.abs(p.x) < 1.5) return; // edge-on face at the back centre
+              const shade = p.x > 0 ? 0.1 : 0.2;
+              const bandH = g.H / bands.length;
+              for (let i = 0; i < bands.length; i++) {
+                const col = bands[bands.length - 1 - i];
+                const y0 = g.cy + i * bandH, y1 = y0 + bandH;
+                ctx.fillStyle = darken(col, shade);
                 ctx.beginPath();
-                ctx.moveTo(x0, y0 + dy);
-                ctx.lineTo(x1, y1 + dy);
-                ctx.stroke();
-                // Thin white buttercream separator line
-                ctx.strokeStyle = '#FFFFFF';
-                ctx.lineWidth = 1.2;
-                ctx.beginPath();
-                ctx.moveTo(x0, y0 + dy + 2.5);
-                ctx.lineTo(x1, y1 + dy + 2.5);
-                ctx.stroke();
+                ctx.moveTo(0, y0);
+                ctx.lineTo(p.x, p.y + i * bandH);
+                ctx.lineTo(p.x, p.y + (i + 1) * bandH);
+                ctx.lineTo(0, y1);
+                ctx.closePath();
+                ctx.fill();
+                if (i > 0) {
+                  ctx.strokeStyle = rgba(VANILLA_CREAM, 0.9);
+                  ctx.lineWidth = 2.4;
+                  ctx.beginPath();
+                  ctx.moveTo(0, y0);
+                  ctx.lineTo(p.x, p.y + i * bandH);
+                  ctx.stroke();
+                }
               }
-              // Dark chocolate outer glaze edge
-              ctx.strokeStyle = '#220D05';
-              ctx.lineWidth = 2.4;
+              // Frosting roof + outer coat along the cut
+              ctx.strokeStyle = topCol;
+              ctx.lineWidth = 4;
               ctx.beginPath();
-              ctx.moveTo(x1, y1 - 18);
-              ctx.lineTo(x1, y1 + 22);
+              ctx.moveTo(0, g.cy);
+              ctx.lineTo(p.x, p.y);
+              ctx.stroke();
+              ctx.strokeStyle = frosting;
+              ctx.lineWidth = 3;
+              ctx.beginPath();
+              ctx.moveTo(p.x, p.y);
+              ctx.lineTo(p.x, p.y + g.H);
+              ctx.stroke();
+              ctx.strokeStyle = 'rgba(92,61,46,0.35)';
+              ctx.lineWidth = 1.4;
+              ctx.beginPath();
+              ctx.moveTo(0, g.cy);
+              ctx.lineTo(p.x, p.y);
+              ctx.lineTo(p.x, p.y + g.H);
+              ctx.lineTo(0, g.cy + g.H);
               ctx.stroke();
             });
           });
@@ -4802,102 +5193,104 @@ const KitchenArt = (() => {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // Board: shadow, end-grain thickness, top face, grain, groove
-    softShadow(ctx, cx + 4, cy + 10 + recoil * 0.5, 190, 96, 0.2);
+    // Round / oval miniature wooden cutting board (sb_L2_M0 row 4, sb_L2_M2 row 1):
+    // shadow, end-grain thickness, top face, grain, bevel ring, hanging hole
+    const BRX = 184, BRY = 92;
+    softShadow(ctx, cx + 4, cy + 14 + recoil * 0.5, BRX * 0.98, BRY * 0.92, 0.2);
     ctx.save();
     ctx.translate(0, recoil);
-    ctx.fillStyle = '#C9915C';
+    ctx.fillStyle = '#B9814E';
     ctx.strokeStyle = OUTLINE;
     ctx.lineWidth = 4;
-    rr(ctx, cx - 178, cy - 80, 356, 172, 28);
+    ell(ctx, cx, cy + 6, BRX, BRY);
     ctx.fill();
     ctx.stroke();
-    const bg = ctx.createLinearGradient(cx - 178, cy - 90, cx + 178, cy + 70);
-    bg.addColorStop(0, '#EDC391');
-    bg.addColorStop(0.5, '#E6B88A');
-    bg.addColorStop(1, '#D9A672');
+    const bg = ctx.createRadialGradient(cx - 60, cy - 50, 20, cx, cy - 4, BRX);
+    bg.addColorStop(0, '#F0CA9A');
+    bg.addColorStop(0.55, '#E6B88A');
+    bg.addColorStop(1, '#D39F6A');
     ctx.fillStyle = bg;
-    rr(ctx, cx - 178, cy - 90, 356, 160, 28);
+    ell(ctx, cx, cy - 4, BRX, BRY);
     ctx.fill();
     ctx.stroke();
-    woodGrain(ctx, cx - 178, cy - 90, 356, 160, 1, 0.22);
-    ctx.strokeStyle = 'rgba(160, 105, 60, 0.55)';
+    ctx.save();
+    ell(ctx, cx, cy - 4, BRX - 3, BRY - 3);
+    ctx.clip();
+    woodGrain(ctx, cx - BRX, cy - 4 - BRY, BRX * 2, BRY * 2, 1, 0.22);
+    ctx.restore();
+    // Bevelled inner ring
+    ctx.strokeStyle = 'rgba(160, 105, 60, 0.5)';
     ctx.lineWidth = 2.5;
-    rr(ctx, cx - 158, cy - 72, 316, 124, 20);
+    ell(ctx, cx, cy - 4, BRX - 18, BRY - 16);
     ctx.stroke();
     ctx.strokeStyle = 'rgba(255, 240, 220, 0.5)';
     ctx.lineWidth = 1.5;
-    rr(ctx, cx - 156, cy - 70, 312, 120, 19);
+    ell(ctx, cx, cy - 4, BRX - 20, BRY - 18);
     ctx.stroke();
-    // Hanging hole
+    // Little handle nub with hanging hole
+    ctx.fillStyle = '#D9A672';
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 3;
+    rr(ctx, cx + BRX - 16, cy - 20, 40, 32, 12);
+    ctx.fill();
+    ctx.stroke();
     ctx.fillStyle = '#A8734A';
-    ctx.strokeStyle = OUTLINE;
     ctx.lineWidth = 2;
-    circ(ctx, cx + 156, cy - 68, 6);
+    circ(ctx, cx + BRX + 10, cy - 4, 5);
     ctx.fill();
     ctx.stroke();
 
-    // Draw the adorable Mini Panda Porcelain Dish (yt_hq1.jpg) on the left of board
-    const pandaX = cx - 82, pandaY = cy - 22;
-    ctx.save();
-    // Dish contact shadow
-    ctx.fillStyle = 'rgba(92, 61, 46, 0.16)';
-    rr(ctx, pandaX - 44, pandaY - 30, 88, 64, 14);
-    ctx.fill();
-    // Porcelain body
-    ctx.fillStyle = '#FFFFFF';
-    ctx.strokeStyle = OUTLINE;
-    ctx.lineWidth = 2.8;
-    rr(ctx, pandaX - 42, pandaY - 32, 84, 60, 12);
-    ctx.fill();
-    ctx.stroke();
-    // Delicate pastel green rim stripe (yt_hq1.jpg)
-    ctx.strokeStyle = '#A8D5BA';
-    ctx.lineWidth = 2;
-    rr(ctx, pandaX - 38, pandaY - 28, 76, 52, 9);
-    ctx.stroke();
-    // Hand-painted cute baby panda illustration inside dish
-    ctx.save();
-    ctx.translate(pandaX, pandaY);
-    // Ears
-    ctx.fillStyle = '#2A2421';
-    circ(ctx, -14, -14, 5.5);
-    circ(ctx, 14, -14, 5.5);
-    ctx.fill();
-    // Face
-    ctx.fillStyle = '#FFFFFF';
-    ctx.strokeStyle = OUTLINE;
-    ctx.lineWidth = 1.6;
-    circ(ctx, 0, -4, 15);
-    ctx.fill();
-    ctx.stroke();
-    // Black eye patches
-    ctx.fillStyle = '#2A2421';
-    ctx.save();
-    ctx.translate(-5.5, -5); ctx.rotate(-0.25);
-    ell(ctx, 0, 0, 4.2, 3.2); ctx.fill();
-    ctx.restore();
-    ctx.save();
-    ctx.translate(5.5, -5); ctx.rotate(0.25);
-    ell(ctx, 0, 0, 4.2, 3.2); ctx.fill();
-    ctx.restore();
-    // White eye catchlights
-    ctx.fillStyle = '#FFFFFF';
-    circ(ctx, -5, -6, 1.2);
-    circ(ctx, 5, -6, 1.2);
-    ctx.fill();
-    // Nose and mouth
-    ctx.fillStyle = '#2A2421';
-    circ(ctx, 0, -1, 1.6);
-    ctx.fill();
-    ctx.strokeStyle = '#2A2421';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.arc(0, 0, 2.8, 0.2, PI - 0.2);
-    ctx.stroke();
-    ctx.restore();
-    ctx.restore();
-
+    // The Mini Panda Porcelain Dish (sb_L2_M0 row 2) ONLY cradles cocoa beans — fruit,
+    // dough, eggs and cheese are chopped straight on the wood.
+    if (bi && bi.id === 'cocoa') {
+      const pandaX = cx, pandaY = cy + 2;
+      ctx.save();
+      ctx.fillStyle = 'rgba(92, 61, 46, 0.16)';
+      rr(ctx, pandaX - 66, pandaY - 44, 132, 92, 18);
+      ctx.fill();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.strokeStyle = OUTLINE;
+      ctx.lineWidth = 2.8;
+      rr(ctx, pandaX - 64, pandaY - 48, 128, 90, 16);
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = '#A8D5BA';
+      ctx.lineWidth = 2;
+      rr(ctx, pandaX - 58, pandaY - 42, 116, 78, 12);
+      ctx.stroke();
+      // Hand-painted baby panda peeking from the dish corner
+      ctx.save();
+      ctx.translate(pandaX - 36, pandaY - 22);
+      ctx.fillStyle = '#2A2421';
+      circ(ctx, -10, -10, 4.5);
+      circ(ctx, 10, -10, 4.5);
+      ctx.fill();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.strokeStyle = OUTLINE;
+      ctx.lineWidth = 1.6;
+      circ(ctx, 0, -2, 12);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#2A2421';
+      ell(ctx, -4.5, -3, 3.4, 2.6, -0.25);
+      ctx.fill();
+      ell(ctx, 4.5, -3, 3.4, 2.6, 0.25);
+      ctx.fill();
+      ctx.fillStyle = '#FFFFFF';
+      circ(ctx, -4, -4, 1);
+      circ(ctx, 4, -4, 1);
+      ctx.fill();
+      ctx.fillStyle = '#2A2421';
+      circ(ctx, 0, 0.5, 1.3);
+      ctx.fill();
+      ctx.strokeStyle = '#2A2421';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.arc(0, 1.5, 2.4, 0.2, PI - 0.2);
+      ctx.stroke();
+      ctx.restore();
+      ctx.restore();
+    }
     ctx.restore();
 
     if (!bi) {
@@ -5409,24 +5802,31 @@ const KitchenArt = (() => {
     ctx.fill();
     ctx.stroke();
 
-    // 6 Miniature Rainbow Batter Bowls flanking the mixing bowl on counter (yt_hq2.jpg)
-    const rainbowColors = ['#FF2A2A', '#FF8C1A', '#FFE619', '#1FD141', '#2986FF', '#8C2BFF'];
-    rainbowColors.forEach((rc, rIdx) => {
-      const rx0 = rIdx < 3 ? -188 + rIdx * 28 : 118 + (rIdx - 3) * 27;
-      const ry0 = 16;
+    // Little prep bowls flanking the mixing bowl: ONLY the ingredients the player actually
+    // prepped (their real colours) — no invented rainbow bowls, nothing when empty.
+    const sideIds = [];
+    (s.mixIds || items.map(it => it.id)).forEach(id => { if (id && sideIds.indexOf(id) < 0) sideIds.push(id); });
+    sideIds.slice(0, 6).forEach((id, rIdx) => {
+      const rx0 = rIdx % 2 === 0 ? -178 - Math.floor(rIdx / 2) * 30 : 178 + Math.floor(rIdx / 2) * 30;
+      const ry0 = 18 + (rIdx % 3) * 4;
+      const meta = ingMeta(id);
+      const fillCol = meta && meta.liquid ? (meta.color || '#FFFFFF') : spongeColorFor(id);
       ctx.save();
-      softShadow(ctx, rx0, ry0 + 5, 17, 6, 0.16);
+      softShadow(ctx, rx0, ry0 + 6, 20, 7, 0.16);
       ctx.fillStyle = '#FFFFFF';
       ctx.strokeStyle = OUTLINE;
       ctx.lineWidth = 1.8;
-      ell(ctx, rx0, ry0, 18, 10);
+      ell(ctx, rx0, ry0, 21, 11);
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = rc;
-      ell(ctx, rx0, ry0 - 2, 14, 7);
+      ctx.fillStyle = fillCol;
+      ell(ctx, rx0, ry0 - 2, 16, 7.5);
       ctx.fill();
+      if (!(meta && meta.liquid)) {
+        drawIngredient(ctx, id, rx0, ry0 - 6, 9, { sliced: !!(meta && meta.choppable), shadow: false });
+      }
       ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-      circ(ctx, rx0 - 4, ry0 - 4, 2.5);
+      circ(ctx, rx0 - 5, ry0 - 5, 2.2);
       ctx.fill();
       ctx.restore();
     });
@@ -5542,113 +5942,154 @@ const KitchenArt = (() => {
     ctx.fill();
   }
 
-  function drawCookStation(ctx, cx, cy, s, t) {
-    s = s || {};
-    const heat = clamp(s.heatLevel || 2, 1, 3);
-    const cook = s.cookProgress || 0;
-    const burnt = cook > 1.08;
-    const spring = s.boardSpring || { sx: 1, sy: 1 };
-
-    ctx.save();
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    // 1. Oven in the background
-    const ovenCx = cx;
-    const ovenCy = cy - 60;
-    const warm = clamp01(cook / 0.85);
-    
-    // Draw oven (Signature Pastel Mint-Green HT Mini Oven casing)
-    softShadow(ctx, ovenCx, ovenCy + 86, 150, 18, 0.22);
+  /** Pastel mint HT Mini Oven. Window shows the round silver cake tin with the sponge
+   *  rising in the player's real batter colour(s). `on` = oven mode (glow + heat). */
+  function drawMiniOvenWithTin(ctx, ovenCx, ovenCy, w, h, on, cook, tint, layers, pulse, spring, t) {
+    const warm = on ? clamp01(cook / 0.85) : 0;
+    const hw = w / 2, hh = h / 2;
+    softShadow(ctx, ovenCx, ovenCy + hh + 6, hw, 18, 0.22);
     ctx.fillStyle = '#8ED6B8';
     ctx.strokeStyle = OUTLINE;
     ctx.lineWidth = 4;
-    rr(ctx, ovenCx - 150, ovenCy - 96, 300, 176, 26);
+    rr(ctx, ovenCx - hw, ovenCy - hh, w, h, 26);
     ctx.fill();
     ctx.stroke();
-    // Knobs
+    // Cream top panel + 3 coral knobs
+    ctx.fillStyle = '#F6FBF7';
+    rr(ctx, ovenCx - hw + 16, ovenCy - hh + 10, w - 32, 30, 12);
+    ctx.fill();
+    ctx.stroke();
     for (let k = -1; k <= 1; k++) {
       ctx.fillStyle = '#E8998D';
-      circ(ctx, ovenCx + k * 40, ovenCy - 78, 8);
+      ctx.lineWidth = 2.6;
+      circ(ctx, ovenCx + k * 44, ovenCy - hh + 25, 8);
       ctx.fill();
       ctx.stroke();
-      ctx.strokeStyle = OUTLINE;
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(ovenCx + k * 40, ovenCy - 78);
-      ctx.lineTo(ovenCx + k * 40 + Math.cos(-1 + k + heat * 0.4) * 6, ovenCy - 78 + Math.sin(-1 + k + heat * 0.4) * 6);
+      ctx.moveTo(ovenCx + k * 44, ovenCy - hh + 25);
+      ctx.lineTo(ovenCx + k * 44 + Math.cos(-1 + k + (on ? 0.8 : 0)) * 6, ovenCy - hh + 25 + Math.sin(-1 + k + (on ? 0.8 : 0)) * 6);
       ctx.stroke();
-      ctx.lineWidth = 4;
     }
-    // Window with warm interior glow
+    // Window
+    const wx = ovenCx - hw + 22, wy = ovenCy - hh + 50, ww = w - 44, whh = h - 84;
     ctx.save();
-    rr(ctx, ovenCx - 118, ovenCy - 58, 236, 114, 18);
+    rr(ctx, wx, wy, ww, whh, 18);
     ctx.clip();
-    const og = ctx.createRadialGradient(ovenCx, ovenCy + 30, 10, ovenCx, ovenCy, 140);
-    og.addColorStop(0, lerpColor('#FFE8A3', '#FFB347', warm * 0.8));
-    og.addColorStop(1, lerpColor('#F7D98A', '#E68A2E', warm * 0.6));
+    const og = ctx.createRadialGradient(ovenCx, wy + whh * 0.8, 10, ovenCx, wy + whh * 0.5, ww * 0.7);
+    if (on) {
+      og.addColorStop(0, lerpColor('#FFE8A3', '#FFB347', warm * 0.8));
+      og.addColorStop(1, lerpColor('#F7D98A', '#E68A2E', warm * 0.6));
+    } else {
+      og.addColorStop(0, '#6F6660');
+      og.addColorStop(1, '#4A423D');
+    }
     ctx.fillStyle = og;
-    ctx.fillRect(ovenCx - 120, ovenCy - 60, 240, 120);
+    ctx.fillRect(wx, wy, ww, whh);
     // Heating coil
-    ctx.strokeStyle = `rgba(255, ${Math.round(120 - warm * 60)}, 60, ${(0.5 + 0.5 * Math.abs(Math.sin(t * 3))).toFixed(3)})`;
+    const coilY = wy + whh - 10;
+    ctx.strokeStyle = on ? `rgba(255, ${Math.round(120 - warm * 60)}, 60, ${(0.5 + 0.5 * Math.abs(Math.sin(t * 3))).toFixed(3)})` : 'rgba(120,110,105,0.6)';
     ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.moveTo(ovenCx - 90, ovenCy + 44);
+    ctx.moveTo(wx + 16, coilY);
     for (let k = 0; k < 6; k++) {
-      ctx.quadraticCurveTo(ovenCx - 75 + k * 30, ovenCy + 34, ovenCx - 60 + k * 30, ovenCy + 44);
+      ctx.quadraticCurveTo(wx + 16 + (k + 0.5) * ((ww - 32) / 6), coilY - 10, wx + 16 + (k + 1) * ((ww - 32) / 6), coilY);
     }
     ctx.stroke();
     // Rack
+    const rackY = wy + whh - 26;
     ctx.strokeStyle = 'rgba(92,61,46,0.55)';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(ovenCx - 100, ovenCy + 24);
-    ctx.lineTo(ovenCx + 100, ovenCy + 24);
+    ctx.moveTo(wx + 10, rackY);
+    ctx.lineTo(wx + ww - 10, rackY);
     ctx.stroke();
     for (let k = -3; k <= 3; k++) {
       ctx.beginPath();
-      ctx.moveTo(ovenCx + k * 28, ovenCy + 24);
-      ctx.lineTo(ovenCx + k * 28, ovenCy + 32);
+      ctx.moveTo(ovenCx + k * 28, rackY);
+      ctx.lineTo(ovenCx + k * 28, rackY + 8);
       ctx.stroke();
     }
-    // Rising cake on a tray
-    const pulse = s.ovenPulse || 0;
-    const rise = (0.6 + warm * 0.5) * (1 + pulse * 0.1);
+    // Round silver cake tin on the rack (sb_L2_M0 row 4)
+    const tinRx = Math.min(66, ww * 0.27), tinRy = tinRx * 0.3, tinH = 42;
+    const tinBottomY = rackY - 2;
+    const tinTopY = tinBottomY - tinH;
     ctx.save();
-    ctx.translate(ovenCx, ovenCy + 22);
-    ctx.scale((spring.sx || 1) * (1 + pulse * 0.08), (spring.sy || 1) * rise);
-    const tint = s.batterTint || '#FFF3C4';
-    const cakeCol = lerpColor(tint, '#E69849', Math.min(0.7, cook / 0.85));
-    ctx.fillStyle = '#B8C5CE';
+    ctx.translate(ovenCx, 0);
+    ctx.scale((spring.sx || 1) * (1 + pulse * 0.04), 1);
+    const tg = ctx.createLinearGradient(-tinRx, 0, tinRx, 0);
+    tg.addColorStop(0, '#8C9BA5');
+    tg.addColorStop(0.3, '#F4F8FA');
+    tg.addColorStop(0.55, '#C9D4DC');
+    tg.addColorStop(1, '#7F8E99');
+    ctx.fillStyle = tg;
     ctx.strokeStyle = OUTLINE;
-    ctx.lineWidth = 2.5;
-    rr(ctx, -84, -6, 168, 10, 4);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = darken(cakeCol, 0.12);
-    ctx.lineWidth = 3;
-    rr(ctx, -72, -40, 144, 36, 16);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = cakeCol;
+    ctx.lineWidth = 2.6;
     ctx.beginPath();
-    ctx.moveTo(-72, -40);
-    ctx.bezierCurveTo(-60, -70 - warm * 12, 60, -70 - warm * 12, 72, -40);
+    ctx.moveTo(-tinRx, tinTopY);
+    ctx.lineTo(-tinRx, tinBottomY);
+    ctx.ellipse(0, tinBottomY, tinRx, tinRy, 0, PI, 0, true);
+    ctx.lineTo(tinRx, tinTopY);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = lighten(cakeCol, 0.35);
-    ell(ctx, -16, -52 - warm * 6, 22, 7, -0.1);
+    // Tin inner wall (dark) + batter / sponge inside
+    ctx.fillStyle = '#6F7E88';
+    ell(ctx, 0, tinTopY, tinRx, tinRy);
     ctx.fill();
-    if (warm > 0.5) {
-      ctx.fillStyle = `rgba(190, 120, 50, ${((warm - 0.5) * 1.2).toFixed(3)})`;
-      for (let k = 0; k < 6; k++) {
-        circ(ctx, (hash(k) - 0.5) * 120, -48 + hash(k + 4) * 10, 3 + hash(k + 8) * 3);
-        ctx.fill();
+    ctx.stroke();
+    if (on || cook > 0) {
+      const rise = clamp01(cook) * 46 * (1 + pulse * 0.1);
+      const bodyCol = safeColor(tint, VANILLA_SPONGE);
+      const crust = lerpColor(bodyCol, '#D9A066', clamp01((cook - 0.35) / 0.65) * 0.42);
+      // Rounded dome rising above the rim
+      const domePath = () => {
+        ctx.beginPath();
+        ctx.moveTo(-tinRx + 3, tinTopY + 1);
+        ctx.bezierCurveTo(-tinRx + 3, tinTopY - rise * 1.15, tinRx - 3, tinTopY - rise * 1.15, tinRx - 3, tinTopY + 1);
+        ctx.ellipse(0, tinTopY + 1, tinRx - 3, tinRy - 1, 0, 0, PI, false);
+        ctx.closePath();
+      };
+      ctx.save();
+      domePath();
+      ctx.clip();
+      const bands = spongeBands(layers && layers.length ? layers : [bodyCol]);
+      const totalH = rise * 1.15 + tinRy * 2 + 2;
+      const bh = totalH / bands.length;
+      for (let i = 0; i < bands.length; i++) {
+        const col = bands[bands.length - 1 - i];
+        ctx.fillStyle = i === 0 ? lerpColor(col, crust, clamp01(cook)) : col;
+        ctx.fillRect(-tinRx - 2, tinTopY - rise * 1.15 + i * bh - 1, tinRx * 2 + 4, bh + 2);
+        if (i > 0 && bands.length > 1) {
+          ctx.fillStyle = rgba(VANILLA_CREAM, 0.55);
+          ctx.fillRect(-tinRx - 2, tinTopY - rise * 1.15 + i * bh - 0.8, tinRx * 2 + 4, 1.6);
+        }
       }
+      // Glossy wet batter sheen fades as it bakes; golden browning spots appear
+      ctx.fillStyle = `rgba(255,255,255,${(0.42 * (1 - clamp01(cook * 1.4))).toFixed(3)})`;
+      ell(ctx, -tinRx * 0.3, tinTopY - rise * 0.7, tinRx * 0.35, 4, -0.1);
+      ctx.fill();
+      if (cook > 0.5) {
+        ctx.fillStyle = `rgba(190, 120, 50, ${((cook - 0.5) * 0.9).toFixed(3)})`;
+        for (let k = 0; k < 7; k++) {
+          circ(ctx, (hash(k) - 0.5) * tinRx * 1.6, tinTopY - rise * (0.45 + hash(k + 4) * 0.5), 2 + hash(k + 8) * 2.5);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+      ctx.strokeStyle = OUTLINE;
+      ctx.lineWidth = 2.2;
+      domePath();
+      ctx.stroke();
     }
+    // Tin rim highlight
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(0, tinTopY, tinRx - 1, tinRy - 1, 0, PI * 1.1, PI * 1.6);
+    ctx.stroke();
     ctx.restore();
-    // Steam inside
+    // Steam inside the window
     if (warm > 0.3) {
       ctx.strokeStyle = `rgba(255,253,249,${(0.5 * warm).toFixed(3)})`;
       ctx.lineWidth = 3;
@@ -5656,8 +6097,8 @@ const KitchenArt = (() => {
         const sx = ovenCx + k * 34;
         const wv = Math.sin(t * 3 + k) * 6;
         ctx.beginPath();
-        ctx.moveTo(sx, ovenCy - 20);
-        ctx.quadraticCurveTo(sx + wv, ovenCy - 36, sx - wv, ovenCy - 52);
+        ctx.moveTo(sx, tinTopY - 30);
+        ctx.quadraticCurveTo(sx + wv, tinTopY - 46, sx - wv, tinTopY - 62);
         ctx.stroke();
       }
     }
@@ -5665,118 +6106,235 @@ const KitchenArt = (() => {
     // Glass frame + reflection
     ctx.strokeStyle = OUTLINE;
     ctx.lineWidth = 4;
-    rr(ctx, ovenCx - 118, ovenCy - 58, 236, 114, 18);
+    rr(ctx, wx, wy, ww, whh, 18);
     ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
     ctx.lineWidth = 6;
     ctx.beginPath();
-    ctx.moveTo(ovenCx - 96, ovenCy + 40);
-    ctx.lineTo(ovenCx - 40, ovenCy - 48);
+    ctx.moveTo(wx + 24, wy + whh - 16);
+    ctx.lineTo(wx + 80, wy + 12);
     ctx.stroke();
     // Door handle
     ctx.fillStyle = '#C9D4DC';
     ctx.strokeStyle = OUTLINE;
     ctx.lineWidth = 3;
-    rr(ctx, ovenCx - 100, ovenCy + 62, 200, 10, 5);
+    rr(ctx, ovenCx - ww * 0.42, wy + whh + 8, ww * 0.84, 10, 5);
     ctx.fill();
     ctx.stroke();
+  }
 
-    // 2. Miniature Saucepan for Glaze in the foreground
-    const panCx = cx;
-    const panCy = cy + 40;
-
-    // Burner & Flame under the saucepan
+  /** Silver miniature wok / pot (sb_L2_M0 row 2, sb_L2_M2 row 2) cooking the real panItems. */
+  function drawSilverWok(ctx, panCx, panCy, s, t, heat, cook, panItems, ids, spring) {
+    const burnt = cook > 1.08;
     const flameOuter = ['#7BC4E8', '#F5A623', '#E85D4A'][heat - 1];
     const flameInner = ['#DFF4FF', '#FFE08A', '#FFC25A'][heat - 1];
+    // Burner ring + flames
     ctx.strokeStyle = '#6B625C';
     ctx.lineWidth = 9;
-    ell(ctx, panCx, panCy + 6, 110, 60);
+    ell(ctx, panCx, panCy + 14, 104, 54);
     ctx.stroke();
     for (let k = 0; k < 12; k++) {
-      const a = (k / 12) * Math.PI * 2;
+      const a = (k / 12) * PI2;
       const f1 = Math.sin(t * 8 + k * 1.5) * 6;
-      drawFlamePetal(ctx, panCx + Math.cos(a) * 96, panCy + 6 + Math.sin(a) * 52, 24 + f1, 14, flameOuter, flameInner, Math.sin(t * 20 + k) * 0.1);
+      drawFlamePetal(ctx, panCx + Math.cos(a) * 90, panCy + 14 + Math.sin(a) * 46, 22 + f1, 13, flameOuter, flameInner, Math.sin(t * 20 + k) * 0.1);
     }
-    // Saucepan base and shadow
-    softShadow(ctx, panCx, panCy + 10, 100, 14, 0.4);
-    
-    // Pot handle
+    softShadow(ctx, panCx, panCy + 20, 100, 16, 0.3);
+
     ctx.save();
-    ctx.translate(panCx + 90, panCy - 20);
-    ctx.rotate(0.2);
-    ctx.fillStyle = '#E8998D';
-    rr(ctx, 0, -8, 80, 16, 8);
+    ctx.translate(panCx, panCy);
+    ctx.scale(spring.sx || 1, spring.sy || 1);
+    const RX = 100, RY = 38, DEPTH = 34;
+    // Long handle (right) with black grip + small helper ear (left)
+    ctx.save();
+    ctx.translate(RX - 6, -14);
+    ctx.rotate(-0.12);
+    const hg = ctx.createLinearGradient(0, -7, 0, 7);
+    hg.addColorStop(0, '#F4F8FA');
+    hg.addColorStop(0.5, '#B8C5CE');
+    hg.addColorStop(1, '#7F8E99');
+    ctx.fillStyle = hg;
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 3;
+    rr(ctx, 0, -7, 76, 14, 7);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#2E2A28';
+    rr(ctx, 40, -8, 50, 16, 8);
     ctx.fill();
     ctx.stroke();
     ctx.restore();
-    
-    // Pot body
-    ctx.fillStyle = '#2A2A2A';
+    ctx.fillStyle = '#C9D4DC';
     ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = 3;
+    rr(ctx, -RX - 20, -20, 30, 12, 6);
+    ctx.fill();
+    ctx.stroke();
+    // Bowl body
+    const bg = ctx.createLinearGradient(-RX, 0, RX, 0);
+    bg.addColorStop(0, '#7F8E99');
+    bg.addColorStop(0.3, '#E6EDF2');
+    bg.addColorStop(0.55, '#B8C5CE');
+    bg.addColorStop(1, '#6F7E88');
+    ctx.fillStyle = bg;
     ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(panCx - 96, panCy - 20);
-    ctx.lineTo(panCx - 86, panCy + 8);
-    ctx.quadraticCurveTo(panCx, panCy + 18, panCx + 86, panCy + 8);
-    ctx.lineTo(panCx + 96, panCy - 20);
+    ctx.moveTo(-RX, -16);
+    ctx.bezierCurveTo(-RX, -16 + DEPTH * 1.4, -RX * 0.5, -16 + DEPTH * 1.9, 0, -16 + DEPTH * 1.9);
+    ctx.bezierCurveTo(RX * 0.5, -16 + DEPTH * 1.9, RX, -16 + DEPTH * 1.4, RX, -16);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-    
-    // Pot rim
-    ctx.fillStyle = '#3A3A3A';
-    ell(ctx, panCx, panCy - 20, 96, 50);
+    // Rim + inner surface
+    const ig = ctx.createRadialGradient(-20, -26, 6, 0, -16, RX);
+    ig.addColorStop(0, '#DCE6EC');
+    ig.addColorStop(0.75, '#9FB0BB');
+    ig.addColorStop(1, '#5F6E78');
+    ctx.fillStyle = ig;
+    ell(ctx, 0, -16, RX, RY);
     ctx.fill();
     ctx.stroke();
-
-    // Dark Chocolate Mirror Glaze pool
-    const poolG = ctx.createRadialGradient(panCx, panCy - 20, 10, panCx, panCy - 20, 90);
-    poolG.addColorStop(0, '#5C3A21'); // rich chocolate
-    poolG.addColorStop(1, '#311D10'); // dark edge
-    ctx.fillStyle = poolG;
-    ell(ctx, panCx, panCy - 18, 88, 44);
-    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(0, -16, RX - 3, RY - 3, 0, PI * 1.1, PI * 1.55);
     ctx.stroke();
 
-    // Glossy catchlights on the mirror glaze
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ell(ctx, panCx - 40, panCy - 30, 20, 6, 0.2);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    ell(ctx, panCx + 40, panCy - 10, 15, 4, -0.2);
-    ctx.fill();
-
-    // Gentle simmer bubbles (no airborne panToss)
-    if (cook > 0.2) {
-      const simmerA = clamp01(cook * 2);
-      ctx.fillStyle = `rgba(120, 70, 40, ${simmerA.toFixed(3)})`;
-      for (let k = 0; k < 6; k++) {
-        const phb = (t * 2 + hash(k)) % 1;
-        const bx = panCx + (hash(k + 3) - 0.5) * 140;
-        const by = panCy - 20 + (hash(k + 7) - 0.5) * 60;
-        const rad = 2 + phb * 6;
-        if (Math.hypot((bx - panCx) / 88, (by - (panCy - 20)) / 44) < 0.9) {
-          ctx.strokeStyle = `rgba(160, 100, 60, ${(0.8 * (1 - phb)).toFixed(3)})`;
+    // ---- What is actually cooking (never an invented chocolate puddle) ----
+    const poolIds = ids.filter(id => isFruitId(id) || isChocoId(id) || id === 'honey' || id === 'cheese' || id === 'popcandy');
+    ctx.save();
+    ell(ctx, 0, -16, RX - 6, RY - 5);
+    ctx.clip();
+    if (poolIds.length) {
+      const poolCol = isChocoId(poolIds[0]) && poolIds.every(isChocoId) ? '#4A2512' : avgColors(poolIds.map(spongeColorFor));
+      const melt = clamp01((cook - 0.08) / 0.55);
+      const prx = 46 + melt * (RX - 52), pry = 18 + melt * (RY - 24);
+      const pg = ctx.createRadialGradient(-prx * 0.3, -22, 4, 0, -12, prx);
+      pg.addColorStop(0, lighten(poolCol, 0.25));
+      pg.addColorStop(1, darken(poolCol, 0.12));
+      ctx.fillStyle = pg;
+      ctx.globalAlpha *= 0.35 + 0.6 * melt;
+      blob(ctx, 0, -10, prx, pry, 2.2, 0.08 + 0.05 * Math.sin(t * 2), 18);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      // Glossy catchlights on the jam / glaze
+      ctx.fillStyle = `rgba(255,255,255,${(0.55 * melt).toFixed(3)})`;
+      ell(ctx, -prx * 0.4, -24, prx * 0.22, 5, 0.2);
+      ctx.fill();
+      // Simmer bubbles in the pool's own colour
+      if (cook > 0.2) {
+        for (let k = 0; k < 7; k++) {
+          const phb = (t * 1.6 + hash(k)) % 1;
+          const bx = (hash(k + 3) - 0.5) * prx * 1.5;
+          const by = -12 + (hash(k + 7) - 0.5) * pry * 1.2;
+          ctx.strokeStyle = rgba(lighten(poolCol, 0.5), 0.85 * (1 - phb));
           ctx.lineWidth = 2;
-          circ(ctx, bx, by, rad);
+          circ(ctx, bx, by, 2 + phb * 6);
           ctx.stroke();
-          ctx.fill();
         }
       }
-      
-      // Steam
-      const steamA = simmerA * 0.5;
+    } else if (ids.some(id => id === 'egg' || id === 'milk')) {
+      ctx.fillStyle = 'rgba(255, 250, 235, 0.5)';
+      ell(ctx, 0, -12, 70, 24);
+      ctx.fill();
+    }
+    // The pieces themselves: fruit softens & sinks into jam, cocoa beans roast, eggs fry
+    const sorted = panItems.slice().sort((a, b) => (a.y || 0) - (b.y || 0));
+    sorted.forEach((p, i) => {
+      const meta = ingMeta(p.id);
+      const fruit = isFruitId(p.id);
+      const pop = p.scale === undefined ? 1 : clamp01(p.scale);
+      const shrink = fruit ? 1 - clamp01(cook) * 0.28 : 1;
+      const sz = (p.id === 'dough' ? 44 : 26) * pop * shrink;
+      if (sz < 1) return;
+      drawIngredient(ctx, p.id, (p.x || 0) * 0.9, -14 + (p.y || 0) * 0.55 + clamp01(cook) * 3, sz, {
+        sliced: p.sliced !== undefined ? p.sliced : !!(meta && meta.choppable),
+        cracked: p.cracked,
+        cooked: cook,
+        rot: (i % 2 ? 0.3 : -0.25) + Math.sin(t * 2 + i) * 0.03,
+        scaleY: 0.86,
+        shadow: false,
+      });
+    });
+    ctx.restore();
+
+    // Steam when hot
+    if (cook > 0.2 && panItems.length) {
+      const steamA = clamp01(cook * 2) * 0.5;
       for (let k = -1; k <= 1; k++) {
-        const sx = panCx + k * 30;
+        const sx = k * 30;
         const ph = (t * 0.5 + k * 0.3 + 1) % 1;
         const wave = Math.sin(t * 3 + k) * 6;
         ctx.strokeStyle = `rgba(255, 253, 249, ${(steamA * (1 - ph)).toFixed(3)})`;
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(sx, panCy - 30 - ph * 15);
-        ctx.quadraticCurveTo(sx + wave, panCy - 45 - ph * 20, sx - wave, panCy - 60 - ph * 25);
+        ctx.moveTo(sx, -40 - ph * 15);
+        ctx.quadraticCurveTo(sx + wave, -58 - ph * 20, sx - wave, -76 - ph * 25);
         ctx.stroke();
       }
+    }
+    if (burnt) {
+      ctx.fillStyle = 'rgba(60,50,45,0.35)';
+      for (let k = 0; k < 4; k++) {
+        const ph = (t * 0.4 + hash(k)) % 1;
+        circ(ctx, (hash(k + 2) - 0.5) * 80, -50 - ph * 50, 8 + ph * 10);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+    // Wooden turner resting on the rim
+    drawSpatula(ctx, panCx - 62, panCy - 44, 24, -0.4 + Math.sin(t * 2) * 0.02);
+  }
+
+  function drawCookStation(ctx, cx, cy, s, t) {
+    s = s || {};
+    const heat = clamp(s.heatLevel || 2, 1, 3);
+    const cook = s.cookProgress || 0;
+    const burnt = cook > 1.08;
+    const spring = s.boardSpring || { sx: 1, sy: 1 };
+    const mode = s.cookMode === 'pan' ? 'pan' : 'oven';
+    const panItems = s.panItems || [];
+    const ids = [];
+    ((s.panIds && s.panIds.length) ? s.panIds : panItems.map(it => it.id)).forEach(id => { if (id && ids.indexOf(id) < 0) ids.push(id); });
+    // Colours come from the ingredients actually in the tin / wok (or the batter carried over)
+    const pal = paletteForIds(ids);
+    const tint = ids.length ? pal.batterTint : safeColor(s.batterTint, VANILLA_SPONGE);
+    const layers = (s.layerColors && s.layerColors.length) ? s.layerColors.map(c => safeColor(c, VANILLA_SPONGE)) : pal.layerColors;
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    if (mode === 'oven') {
+      // Hero: the mint HT Mini Oven baking the player's sponge in its round silver tin
+      drawMiniOvenWithTin(ctx, cx, cy - 20, 330, 230, true, cook, tint, layers, s.ovenPulse || 0, spring, t);
+      // A little bowl of the same batter waiting on the counter (what went into the tin)
+      if (ids.length || s.batterTint) {
+        ctx.save();
+        ctx.translate(cx - 196, cy + 78);
+        softShadow(ctx, 0, 12, 30, 9, 0.18);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.strokeStyle = OUTLINE;
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(-30, 0);
+        ctx.quadraticCurveTo(-26, 22, 0, 24);
+        ctx.quadraticCurveTo(26, 22, 30, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = tint;
+        ell(ctx, 0, 0, 30, 10);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ell(ctx, -10, -3, 8, 3, -0.3);
+        ctx.fill();
+        ctx.restore();
+      }
+    } else {
+      // Oven stays dark in the back; the silver wok on the burner does the cooking
+      drawMiniOvenWithTin(ctx, cx, cy - 118, 250, 150, false, 0, tint, layers, 0, { sx: 1, sy: 1 }, t);
+      drawSilverWok(ctx, cx, cy + 40, s, t, heat, cook, panItems, ids, spring);
     }
 
     // Done sparkles
@@ -5784,18 +6342,122 @@ const KitchenArt = (() => {
       ctx.fillStyle = '#F7C948';
       for (let k = 0; k < 4; k++) {
         const a = t * 2 + k * 1.6;
-        sparkle4(ctx, ovenCx + 120 + Math.cos(a) * 18, ovenCy - 90 + Math.sin(a) * 10, 7 + Math.sin(t * 5 + k) * 2, t * 2);
+        sparkle4(ctx, cx + 150 + Math.cos(a) * 18, cy - 130 + Math.sin(a) * 10, 7 + Math.sin(t * 5 + k) * 2, t * 2);
         ctx.fill();
       }
     }
-
-    // Spatula resting on the saucepan rim (no lifting)
-    drawSpatula(ctx, panCx - 60, panCy - 40, 24, -0.4 + Math.sin(t * 2) * 0.02);
-
     ctx.restore();
   }
 
-  /* ---------- Station 4: Cake stand, piping bag, sauce & sprinkles ---------- */
+  /* ---------- Station 4: White turntable, tweezers, piping bag & glaze jug ---------- */
+  /** Miniature silver tweezers (sb_L2_M1 row 1 / sb_L2_M2 row 4). Origin = tip.
+   *  grip 0 = open, 1 = pinched. opts.hold = { kind:'ball'|'rosette'|'topping', color, id } */
+  function drawTweezers(ctx, x, y, r, angle, grip, opts) {
+    opts = opts || {};
+    grip = clamp01(grip === undefined ? 1 : grip);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle || 0);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    const spread = r * (0.26 - grip * 0.14);
+    const L = r * 2.2;
+    const mg = ctx.createLinearGradient(-r * 0.4, 0, r * 0.4, 0);
+    mg.addColorStop(0, '#8C9BA5');
+    mg.addColorStop(0.5, '#F4F8FA');
+    mg.addColorStop(1, '#A9B8C2');
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = Math.max(1.6, r * 0.07);
+    ctx.fillStyle = mg;
+    [-1, 1].forEach(side => {
+      ctx.beginPath();
+      ctx.moveTo(side * spread * 0.2, -r * 0.05);
+      ctx.lineTo(side * spread, -r * 0.9);
+      ctx.lineTo(side * (spread + r * 0.16), -L);
+      ctx.lineTo(side * (spread - r * 0.04), -L - r * 0.05);
+      ctx.lineTo(side * (spread * 0.6), -r * 0.9);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    });
+    // Joint cap at the top
+    ctx.fillStyle = '#C9D4DC';
+    rr(ctx, -r * 0.3, -L - r * 0.22, r * 0.6, r * 0.26, r * 0.1);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+    ctx.lineWidth = Math.max(1, r * 0.04);
+    ctx.beginPath();
+    ctx.moveTo(-spread + r * 0.03, -r * 0.8);
+    ctx.lineTo(-spread - r * 0.06, -L + r * 0.2);
+    ctx.stroke();
+    // Whatever is pinched between the tips
+    const hold = opts.hold;
+    if (hold && grip > 0.15) {
+      if (hold.kind === 'rosette') drawButtercreamRosette(ctx, 0, r * 0.1, r * 0.22, safeColor(hold.color, '#FF85B3'));
+      else if (hold.kind === 'topping' && hold.id) drawTopping(ctx, { id: hold.id, ingredient: hold.ingredient, x: 0, y: r * 0.12, seed: 1, color: hold.color }, 0, null);
+      else drawSpecularCandyBall(ctx, 0, r * 0.08, r * 0.2, safeColor(hold.color, '#FF2A2A'));
+    }
+    ctx.restore();
+  }
+
+  /** Small ceramic glaze jug pouring the selected glaze colour. Origin = spout. */
+  function drawGlazeJug(ctx, x, y, r, tilt, color, pour) {
+    color = safeColor(color, '#FF2B5E');
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(tilt || 0);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    if (pour > 0.03) {
+      ctx.fillStyle = color;
+      ctx.strokeStyle = OUTLINE;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.08, 0);
+      ctx.quadraticCurveTo(-r * 0.1, r * 0.5 * pour, -r * 0.04, r * 1.05 * pour);
+      ctx.lineTo(r * 0.06, r * 1.05 * pour);
+      ctx.quadraticCurveTo(r * 0.12, r * 0.5 * pour, r * 0.08, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      rr(ctx, -r * 0.04, r * 0.1, r * 0.04, r * 0.7 * pour, r * 0.02);
+      ctx.fill();
+    }
+    // Jug body (cream ceramic) with the glaze visible inside the mouth
+    ctx.fillStyle = '#FFFDF9';
+    ctx.strokeStyle = OUTLINE;
+    ctx.lineWidth = Math.max(1.8, r * 0.07);
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.12, 0);
+    ctx.lineTo(r * 0.34, -r * 0.12);
+    ctx.lineTo(r * 1.1, -r * 0.2);
+    ctx.quadraticCurveTo(r * 1.3, -r * 0.9, r * 0.9, -r * 1.3);
+    ctx.lineTo(r * 0.1, -r * 1.3);
+    ctx.quadraticCurveTo(-r * 0.28, -r * 1.0, -r * 0.12, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = color;
+    ell(ctx, r * 0.5, -r * 0.18, r * 0.5, r * 0.11, -0.08);
+    ctx.fill();
+    ctx.stroke();
+    // Handle
+    ctx.beginPath();
+    ctx.moveTo(r * 1.08, -r * 1.05);
+    ctx.quadraticCurveTo(r * 1.65, -r * 0.95, r * 1.2, -r * 0.4);
+    ctx.lineWidth = Math.max(2.4, r * 0.12);
+    ctx.stroke();
+    ctx.strokeStyle = '#FFFDF9';
+    ctx.lineWidth = Math.max(1.2, r * 0.06);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ell(ctx, r * 0.35, -r * 0.95, r * 0.08, r * 0.2, -0.2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   function drawDecorateStation(ctx, cx, cy, s, t) {
     s = s || {};
     const dish = s.dish;
@@ -5805,23 +6467,26 @@ const KitchenArt = (() => {
     const pa = normAnim(s.pipingAnim);
     const hp = s.hoverPt || null;
     const toolColor = s.toolColor || (tool === 'sauce' ? '#FF2B5E' : '#FF85B3');
+    const style = s.cakeStyle || (dish && dish.cakeStyle) || null;
 
     ctx.save();
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    // Signature White Cake Turntable with Sunflower Pot (left) and Rainbow Arch (right) (yt_maxresdefault.jpg)
-    const turntableAngle = s.turntableAngle !== undefined ? s.turntableAngle : ((dish && dish.turntableAngle !== undefined) ? dish.turntableAngle : t * 0.35);
+    const turntableAngle = s.turntableAngle !== undefined ? s.turntableAngle : ((dish && dish.turntableAngle !== undefined) ? dish.turntableAngle : 0);
     if (!dish) {
       drawWhiteCakeTurntable(ctx, cx, cy + 54, 144, 76, turntableAngle, t);
     }
 
-    // Cute studio figurines on counter table
+    // Cute studio figurines on the counter (left sunflower pot, right rainbow arch)
     drawYellowSunflowerPot(ctx, cx - 192, cy + 62, 0.88);
     drawRainbowArchFigurine(ctx, cx + 192, cy + 62, 0.88);
 
     if (dish) {
       const dishWithAngle = Object.assign({}, dish, { turntableAngle });
-      drawDish(ctx, dishWithAngle, cx, cy, dishScale, t, { toppingSprings: s.toppingSprings });
+      drawDish(ctx, dishWithAngle, cx, cy, dishScale, t, {
+        toppingSprings: s.toppingSprings,
+        placing: pa.active ? { kind: pa.kind || (s.pipingAnim && s.pipingAnim.kind) || 'piping', t: pa.t } : null,
+      });
     }
 
     // Tool follows the pointer when near the dish; otherwise rests to the side
@@ -5833,29 +6498,30 @@ const KitchenArt = (() => {
     const sq = squeezeGiven !== null ? squeezeGiven : (pa.active ? bump(pa.t) : (near ? 0.12 + Math.sin(t * 4) * 0.06 : 0));
     const shake = (s.pipingAnim && s.pipingAnim.shake) || 0;
     const tilt = s.toolTilt || 0;
-    if (tool === 'piping') {
-      if (pa.active && pa.x !== undefined) { tx = pa.x; ty = pa.y; }
-      // Slanted piping bag with silver metal cone tip approaching from right (yt_hq2.jpg)
-      const bagAngle = -0.72 + shake * 0.4 + tilt * 0.3;
-      drawPipingBag(ctx, tx + 20, ty - 24, 42, sq, pa.color || toolColor, { angle: bagAngle });
-    } else if (tool === 'sauce') {
-      drawSauceBottle(ctx, tx + 10, ty - 8, 36, 0.55 + shake + tilt, toolColor, near ? 0.5 + sq : 0);
-    } else {
-      const stilt = -0.7 - sq * 0.5 + shake + tilt;
-      drawShaker(ctx, tx + 20, ty - 54, 30, stilt);
-      if (sq > 0.2) {
-        const cols = ['#E87A82', '#F2C97D', '#8FB9A8', '#9B82C9'];
-        for (let k = 0; k < 6; k++) {
-          const phk = ((pa.active ? pa.t : t * 0.6) * 1.4 + hash(k)) % 1;
-          ctx.save();
-          ctx.translate(tx + 8 + (hash(k + 3) - 0.5) * 30, ty - 40 + phk * 44);
-          ctx.rotate(phk * 6 + k);
-          ctx.fillStyle = cols[k % cols.length];
-          rr(ctx, -5, -2, 10, 4, 2);
-          ctx.fill();
-          ctx.restore();
-        }
+    const kind = pa.active ? (pa.kind || (s.pipingAnim && s.pipingAnim.kind)) : null;
+    if (pa.active && pa.x !== undefined) { tx = pa.x; ty = pa.y; }
+
+    const usesTweezers = tool === 'topping' || (tool === 'piping' && style === 'candy_balls');
+    if (tool === 'sauce') {
+      // Pouring the chosen glaze over the top edge (sb_L2_M2 row 4)
+      drawGlazeJug(ctx, tx + 6, ty - 10, 34, 0.5 + shake + tilt + sq * 0.25, toolColor, near || pa.active ? 0.4 + sq : 0);
+    } else if (usesTweezers) {
+      // Tweezers approach from the upper right, release the piece on the cake, lift away
+      const lift = pa.active ? (1 - bump(seg(pa.t, 0.0, 0.7))) : 1;
+      const grip = pa.active ? 1 - seg(pa.t, 0.45, 0.75) : 1;
+      let hold = null;
+      if (tool === 'topping') {
+        const topId = s.selectedTopping || s.toppingId || null;
+        const topMeta = topId && KitchenData.getTopping ? KitchenData.getTopping(topId) : null;
+        hold = { kind: topId && topId !== 'candy_balls' ? 'topping' : 'ball', id: topId, ingredient: topMeta && topMeta.ingredient, color: toolColor };
+      } else {
+        hold = { kind: 'ball', color: toolColor };
       }
+      drawTweezers(ctx, tx + 2 + lift * 10, ty - 4 - lift * 18, 30, -0.55 + tilt * 0.4 + shake * 0.3, grip, { hold });
+    } else {
+      // Slanted piping bag with silver star tip approaching from the right (sb_L2_M1 row 5)
+      const bagAngle = -0.72 + shake * 0.4 + tilt * 0.3;
+      drawPipingBag(ctx, tx + 20, ty - 24, 42, sq, (pa.active && pa.color) || toolColor, { angle: bagAngle });
     }
     ctx.restore();
   }
@@ -5885,12 +6551,30 @@ const KitchenArt = (() => {
     ctx.save();
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    const isCake = dish && (dish.bakedCake || dish.cakeStyle || dish.recipeId === 'ht_rainbow_candy_cake' || dish.recipeId === 'ht_rainbow_rosette_cake');
+    const isCake = isCakeDish(dish);
     if (dish) drawDish(ctx, dish, cx, cy, dishScale, t, { scoopProgress: scoopP, toppingSprings: s.toppingSprings });
 
     const sampleId = dish && dish.items.length ? dish.items[0].id : 'strawberry';
     const sampleCooked = dish && dish.items.length ? (dish.items[0].cooked || 0) : 0;
-    const dishCol = dish ? (dish.liquidColor || '#F4A6B8') : '#F4A6B8';
+    const dishCol = dish ? (dish.liquidColor || deriveBatterTint(dish) || '#F4A6B8') : '#F4A6B8';
+    // The bite on the spoon is a wedge of THE player's cake (real layers, real frosting)
+    let topper = null;
+    if (dish && isCake) {
+      if (dish.candyBalls && dish.candyBalls.length) topper = { kind: 'ball', color: dish.candyBalls[0].color };
+      else if (dish.rosettes && dish.rosettes.length) topper = { kind: 'rosette', color: dish.rosettes[0].color };
+      else {
+        const fruit = dish.items.find(it => !isNeutralId(it.id) && !isChocoId(it.id));
+        if (fruit) topper = { kind: 'fruit', id: fruit.id };
+      }
+    }
+    const glaze = dish && isCake ? cakeGlaze(dish) : null;
+    const spoonOpts = {
+      isCake,
+      layerColors: dish ? deriveLayerColors(dish) : null,
+      frostingColor: dish ? deriveFrostingColor(dish) : null,
+      glazeColor: glaze && glaze.color && glaze.coverage > 0 ? lerpColor(deriveFrostingColor(dish), glaze.color, clamp01(glaze.coverage * 1.6)) : null,
+      topper,
+    };
 
     // Dotted guide path from the spoon to the mouth (opt-in; game.js draws its own)
     if (s.drawGuide && bites === 0 && !fork.dragging && !fs.active) {
@@ -5978,7 +6662,7 @@ const KitchenArt = (() => {
       ctx.translate(px, py);
       ctx.rotate(ang);
       ctx.scale((2 - sqz) * fscale, sqz * fscale);
-      drawSpoon(ctx, 0, 0, R, 0, { scoop: load, ingId: fs.ingId || sampleId, color: fs.color || dishCol, cooked: sampleCooked, isCake });
+      drawSpoon(ctx, 0, 0, R, 0, Object.assign({ scoop: load, ingId: fs.ingId || sampleId, color: fs.color || dishCol, cooked: sampleCooked }, spoonOpts));
       ctx.restore();
     } else {
       // Resting / dragged spoon, loaded with a bite while portions remain
@@ -5994,9 +6678,9 @@ const KitchenArt = (() => {
       ctx.fillStyle = 'rgba(92,61,46,0.12)';
       ell(ctx, fork.x + 6, fork.y + 42, 24, 7);
       ctx.fill();
-      drawSpoon(ctx, fork.x, fork.y + bob, R, -0.55 + (fork.dragging ? Math.sin(t * 10) * 0.05 : 0), {
-        scoop: (fork.dragging || bites < 3) ? 1 : 0, ingId: sampleId, color: dishCol, cooked: sampleCooked, isCake,
-      });
+      drawSpoon(ctx, fork.x, fork.y + bob, R, -0.55 + (fork.dragging ? Math.sin(t * 10) * 0.05 : 0), Object.assign({
+        scoop: (fork.dragging || bites < 3) ? 1 : 0, ingId: sampleId, color: dishCol, cooked: sampleCooked,
+      }, spoonOpts));
     }
     ctx.restore();
   }
@@ -6019,12 +6703,14 @@ const KitchenArt = (() => {
     getCritterMouth,
     getCounterY,
     // utensils
-    drawKnife, drawSpoon, drawWhisk, drawPipingBag, drawSpatula, drawShaker, drawSauceBottle, drawRollingPin,
+    drawKnife, drawSpoon, drawWhisk, drawPipingBag, drawSpatula, drawShaker, drawSauceBottle, drawRollingPin, drawTweezers, drawGlazeJug,
     // particles
     drawParticle,
     // stations
     drawChopStation, drawMixStation, drawCookStation, drawDecorateStation, drawFeedStation,
     // HT Mini Cakes additions
     drawSpecularCandyBall, drawButtercreamRosette, drawWhiteCakeTurntable, drawYellowSunflowerPot, drawRainbowArchFigurine,
+    // Ingredient-driven cake palette & geometry (shared with game.js for hit-testing / audits)
+    deriveLayerColors, deriveBatterTint, deriveFrostingColor, isCakeDish, cakeGeom, cakeSurfacePoint, cakeSurfaceXY, paletteForIds,
   };
 })();
