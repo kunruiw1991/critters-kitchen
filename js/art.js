@@ -906,8 +906,12 @@ window.KitchenArt = (function() {
                 const ly = cy - cakeH + (layerColors.length - 1 - idx) * layerH;
                 
                 ctx.beginPath();
+                ctx.moveTo(cx, ly);
                 ctx.ellipse(cx, ly, r*0.8, r*0.3, 0, 0.45, Math.PI*2 - 0.45);
+                ctx.lineTo(cx, ly);
+                ctx.lineTo(cx, ly + layerH);
                 ctx.ellipse(cx, ly + layerH, r*0.8, r*0.3, 0, Math.PI*2 - 0.45, 0.45, true);
+                ctx.lineTo(cx, ly + layerH);
                 ctx.closePath();
                 ctx.fill();
             });
@@ -937,6 +941,8 @@ window.KitchenArt = (function() {
                 
                 ctx.beginPath(); ctx.moveTo(cx, ly); ctx.lineTo(cx + Math.cos(0.45)*r*0.8, ly + Math.sin(0.45)*r*0.3); ctx.lineTo(cx + Math.cos(0.45)*r*0.8, ly + layerH + Math.sin(0.45)*r*0.3); ctx.lineTo(cx, ly + layerH); ctx.fill();
                 ctx.beginPath(); ctx.moveTo(cx, ly); ctx.lineTo(cx + Math.cos(-0.45)*r*0.8, ly + Math.sin(-0.45)*r*0.3); ctx.lineTo(cx + Math.cos(-0.45)*r*0.8, ly + layerH + Math.sin(-0.45)*r*0.3); ctx.lineTo(cx, ly + layerH); ctx.fill();
+                ctx.fillStyle = 'rgba(0,0,0,0.08)';
+                ctx.fill();
             });
 
             const px = cx + r*1.5; const py = cy + 60;
