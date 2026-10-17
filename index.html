@@ -1,75 +1,27 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
+  <title>Critter's Kitchen</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Patisserie Studio</title>
-  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div class="kitchen-app">
-    <!-- 1. Top Pinterest Patisserie Header (100% Custom Illustrated Icons, Zero Text, Zero System Emojis) -->
-    <header class="top-header">
-      <div class="brand-badge" id="brandBadge"></div>
-      <div class="customer-strip" id="customerStrip"></div>
-      <div class="top-actions">
-        <div class="star-badge" id="starBadge"><canvas id="starIconCv" width="48" height="48"></canvas><span id="starCount"></span></div>
-        <button class="pill-btn gold" id="openAlbumBtn"><canvas id="albumIconCv" width="48" height="48"></canvas><span id="albumCount"></span></button>
-        <button class="pill-btn icon-only" id="modeToggleBtn"><canvas id="modeIconCv" width="52" height="52"></canvas></button>
-        <button class="pill-btn icon-only" id="newDishBtn"><canvas id="refreshIconCv" width="52" height="52"></canvas></button>
-        <button class="pill-btn icon-only" id="muteToggleBtn"><canvas id="soundIconCv" width="52" height="52"></canvas></button>
-      </div>
-    </header>
-
-    <!-- 2. Main Interactive Pinterest Storybook Kitchen Canvas -->
-    <main class="canvas-stage">
-      <canvas id="kitchenCanvas"></canvas>
-      <div class="prep-tray-overlay" id="prepTrayStrip"></div>
-      <button class="floating-action-btn" id="primaryActionBtn">
-        <canvas id="primaryActionCv" width="128" height="72"></canvas>
-      </button>
-    </main>
-
-    <!-- 3A. Botanical Ingredient Drawer (Visible on Stations 1, 2, 3) -->
-    <section class="bottom-shelf-panel" id="ingredientDrawer">
-      <div class="cat-tabs" id="catTabs"></div>
-      <div class="ingredient-shelf" id="ingredientShelf"></div>
-    </section>
-
-    <!-- 3B. Patisserie Piping & Topping Atelier (Visible on Station 4) -->
-    <section class="bottom-shelf-panel" id="decorToolbar" style="display:none;"></section>
-
-    <!-- 4. 10-Station Custom-Illustrated Patisserie Dock -->
-    <nav class="station-dock" id="stationDock">
-      <button class="station-btn active" data-station="1"><canvas width="88" height="64"></canvas></button>
-      <button class="station-btn" data-station="2"><canvas width="88" height="64"></canvas></button>
-      <button class="station-btn" data-station="3"><canvas width="88" height="64"></canvas></button>
-      <button class="station-btn" data-station="4"><canvas width="88" height="64"></canvas></button>
-      <button class="station-btn" data-station="5"><canvas width="88" height="64"></canvas></button>
-      <button class="station-btn" data-station="6"><canvas width="88" height="64"></canvas></button>
-      <button class="station-btn" data-station="7"><canvas width="88" height="64"></canvas></button>
-      <button class="station-btn" data-station="8"><canvas width="88" height="64"></canvas></button>
-      <button class="station-btn" data-station="9"><canvas width="88" height="64"></canvas></button>
-      <button class="station-btn" data-station="10"><canvas width="88" height="64"></canvas></button>
-    </nav>
+  <canvas id="kitchenCanvas"></canvas>
+  
+  <button id="critterBtn"></button>
+  <button id="resetBtn"></button>
+  
+  <div id="bottomDock">
+    <button class="stage-btn" data-stage="1"></button>
+    <button class="stage-btn" data-stage="2"></button>
+    <button class="stage-btn" data-stage="3"></button>
+    <button class="stage-btn" data-stage="4"></button>
   </div>
 
-  <!-- Pinterest Polaroid Photo Gallery Modal (100% Zero-Text) -->
-  <div class="modal-backdrop hidden" id="albumModal">
-    <div class="modal-card">
-      <div class="modal-header">
-        <canvas id="modalHeaderCv" width="120" height="52"></canvas>
-        <button class="pill-btn icon-only" id="closeAlbumBtn"><canvas id="closeModalCv" width="48" height="48"></canvas></button>
-      </div>
-      <div class="album-grid" id="albumGrid"></div>
-    </div>
-  </div>
-
-  <script src="harness.js"></script>
   <script src="js/data.js"></script>
-  <script src="js/audio.js"></script>
   <script src="js/art.js"></script>
+  <script src="js/audio.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>
