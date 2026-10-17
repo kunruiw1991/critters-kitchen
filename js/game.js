@@ -3775,7 +3775,7 @@ const KitchenGame = (() => {
     const tr = state.stationTransition;
     if (!tr.active) return;
     tr.t += dt;
-    if ((tr.t > 0.25 && Math.abs(state.stationSlideOffset) < 0.6 && Math.abs(state.stationSlideVel) < 12) || tr.t > 0.8) {
+    if ((tr.t > 0.22 && Math.abs(state.stationSlideOffset) < 2.0 && Math.abs(state.stationSlideVel) < 25) || tr.t > 0.5) {
       tr.active = false;
       state.stationSlideOffset = 0;
       state.stationSlideVel = 0;
@@ -4041,7 +4041,7 @@ const KitchenGame = (() => {
     }
     // Elastic camera slide (under-damped: ~5% overshoot)
     if (state.stationTransition.active) {
-      state.stationSlideVel += (-state.stationSlideOffset * 95 - state.stationSlideVel * 13.5) * h;
+      state.stationSlideVel += (-state.stationSlideOffset * 110 - state.stationSlideVel * 16) * h;
       state.stationSlideOffset += state.stationSlideVel * h;
     }
   }
